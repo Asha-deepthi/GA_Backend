@@ -9,3 +9,19 @@ class BasicDetails(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.email}"
+
+class DemoQuestion(models.Model):
+    QUESTION_TYPES = [
+        ('mcq', 'Multiple Choice'),
+        ('audio', 'Audio Response'),
+        ('video', 'Video Response'),
+        ('coding', 'Coding Question'),
+    ]
+
+    question_text = models.TextField()
+    question_type = models.CharField(max_length=10, choices=QUESTION_TYPES)
+    options = models.JSONField(blank=True, null=True)  # Only used for MCQ
+
+    def __str__(self):
+        return f"{self.question_type.upper()} - {self.question_text[:50]}"
+

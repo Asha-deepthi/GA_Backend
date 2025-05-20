@@ -1,0 +1,39 @@
+[
+  {
+    "model": "test_execution.demoquestion",
+    "fields": {
+      "question_text": "What is the capital of India?",
+      "question_type": "mcq",
+      "options": {
+        "A": "Delhi",
+        "B": "Mumbai",
+        "C": "Chennai",
+        "D": "Kolkata"
+      }
+    }
+  },
+  {
+    "model": "test_execution.demoquestion",
+    "fields": {
+      "question_text": "Introduce yourself in English.",
+      "question_type": "video",
+      "options": null
+    }
+  },
+  {
+    "model": "test_execution.demoquestion",
+    "fields": {
+      "question_text": "Solve a coding problem that prints Fibonacci numbers.",
+      "question_type": "coding",
+      "options": null
+    }
+  },
+  {
+    "model": "test_execution.demoquestion",
+    "fields": {
+      "question_text": "explain polymorphism in OOP",
+      "question_type": "audio",
+      "options": null
+    }
+  }
+]
