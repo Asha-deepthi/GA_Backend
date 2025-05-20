@@ -2,13 +2,13 @@
   {
     "model": "test_execution.demoquestion",
     "fields": {
-      "question_text": "What is the capital of India?",
+      "question_text": "Which of the following are programmig languages?",
       "question_type": "mcq",
       "options": {
-        "A": "Delhi",
-        "B": "Mumbai",
-        "C": "Chennai",
-        "D": "Kolkata"
+        "A": "C++",
+        "B": "Java",
+        "C": "HTML",
+        "D": "CSS"
       }
     }
   },
