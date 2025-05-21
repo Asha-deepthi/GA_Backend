@@ -1,0 +1,17 @@
+#backend/backend_project/accounts/templates/activation_email.html
+<!DOCTYPE html>
+<html>
+  <body>
+    <p>Hi {{ user.email }},</p>
+
+    <p>Thank you for signing up.</p>
+
+    <p>Please click the link below to activate your account:</p>
+
+    <p><a href="{{ activation_link }}">{{ activation_link }}</a></p>
+
+    <p>If you didn't request this, please ignore this email.</p>
+
+    <p>Regards,<br>Proctored Test Platform Team</p>
+  </body>
+</html>

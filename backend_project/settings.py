@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
+import os
 from decouple import config
 
 from pathlib import Path
@@ -29,6 +30,31 @@ DEBUG = True
 ALLOWED_HOSTS = []
 
 
+CORS_ALLOW_ALL_ORIGINS = True
+AUTH_USER_MODEL = 'accounts.CustomUser'
+
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'morthakalyani05@gmail.com'        # Your Gmail address
+EMAIL_HOST_PASSWORD = 'lslmxizfidxlygzp'  # Your Gmail app password or account password
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'user': '1000/day'
+    }
+}
+
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -39,13 +65,15 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'test_execution',
-    'test_creation',
     'corsheaders',
+    'rest_framework_simplejwt',
+    'test_creation.accounts',
+    'test_creation',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -60,7 +88,7 @@ ROOT_URLCONF = 'backend_project.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'backend_project', 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
