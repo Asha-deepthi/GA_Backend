@@ -81,4 +81,12 @@ class VideoUploadView(generics.CreateAPIView):
     parser_classes = [MultiPartParser, FormParser]
     
     def perform_create(self, serializer):
-        serializer.save()
+        user = self.request.user
+        serializer.save(user=user)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            print(serializer.errors)  # DEBUG: print errors to console
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return super().create(request, *args, **kwargs)

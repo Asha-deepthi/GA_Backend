@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     BasicDetailsCreateView, DemoQuestionListView, TestSessionListCreateView, TestSessionDetailView, AnswerListCreateView,
     AnswerDetailView, ProctoringLogListCreateView, ProctoringLogDetailView, ProctorCommentListCreateView, ProctorCommentDetailView,
-    PageContentListCreateView, PageContentDetailView, AudioUploadView,
+    PageContentListCreateView, PageContentDetailView, AudioUploadView, VideoUploadView,
 )
  
 urlpatterns = [
@@ -30,4 +30,6 @@ urlpatterns = [
     path('page-contents/<int:pk>/', PageContentDetailView.as_view(), name='pagecontent-detail'),
 
     path('upload-audio/', AudioUploadView.as_view(), name='upload-audio'),
+
+    path('upload-video/', VideoUploadView.as_view(), name='upload-video'),
 ]
