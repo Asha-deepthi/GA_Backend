@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (
-    BasicDetailsCreateView, DemoQuestionListView, TestSessionListCreateView, TestSessionDetailView, AnswerListCreateView,
+    BasicDetailsCreateView, GetUserView, DemoQuestionListView, TestSessionListCreateView, TestSessionDetailView, AnswerListCreateView,
     AnswerDetailView, ProctoringLogListCreateView, ProctoringLogDetailView, ProctorCommentListCreateView, ProctorCommentDetailView,
     PageContentListCreateView, PageContentDetailView, AudioUploadView, VideoUploadView,
 )
@@ -8,7 +8,7 @@ from .views import (
 urlpatterns = [
     path('submit-details/', BasicDetailsCreateView.as_view(), name='submit-details'),
     path('demo-questions/', DemoQuestionListView.as_view(), name='demo-questions'),
-
+    path('get-user/<int:pk>/',GetUserView.as_view(),name='get-user'),
     # TestSession
     path('test-sessions/', TestSessionListCreateView.as_view(), name='testsession-list-create'),
     path('test-sessions/<int:pk>/', TestSessionDetailView.as_view(), name='testsession-detail'),

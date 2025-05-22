@@ -11,6 +11,10 @@ class BasicDetailsCreateView(generics.CreateAPIView):
     queryset = BasicDetails.objects.all()
     serializer_class = BasicDetailsSerializer
 
+class GetUserView(generics.RetrieveAPIView):
+    queryset = BasicDetails.objects.all()
+    serializer_class = BasicDetailsSerializer
+
 class DemoQuestionListView(generics.ListAPIView):
     queryset = DemoQuestion.objects.all()
     serializer_class = DemoQuestionSerializer
