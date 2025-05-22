@@ -76,3 +76,20 @@ class PageContent(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, limit_choices_to={'role': 'admin'})
     created_at = models.DateTimeField(auto_now_add=True)
 
+class AudioResponse(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    audio_file = models.FileField(upload_to='audio_responses/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"AudioResponse by {self.user.username} at {self.uploaded_at}"
+
+#for candidates who login using token
+
+#class AudioResponse(models.Model):
+    #user = models.ForeignKey(User, on_delete=models.CASCADE)
+    #audio_file = models.FileField(upload_to='audio_responses/')
+    #timestamp = models.DateTimeField(auto_now_add=True)
+
+    #def __str__(self):
+        #return f"{self.user.username} - {self.timestamp}"

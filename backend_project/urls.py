@@ -17,11 +17,15 @@ Including another URLconf
 #backend/backend_project/urls.py
 from django.contrib import admin
 from django.urls import path , include
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('users/', include('users.urls')),
-     path('api/test-creation/', include('test_creation.urls')),
+    path('api/test-creation/', include('test_creation.urls')),
     path('test-execution/', include('test_execution.urls')),
 ]
 
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

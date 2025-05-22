@@ -1,5 +1,9 @@
 from django.shortcuts import render
 from rest_framework import generics
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework import status
 from .models import *
 from .serializers import *
 
@@ -50,3 +54,23 @@ class PageContentListCreateView(generics.ListCreateAPIView):
 class PageContentDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = PageContent.objects.all()
     serializer_class = PageContentSerializer
+
+class AudioUploadView(generics.CreateAPIView):
+    queryset = AudioResponse.objects.all()
+    serializer_class = AudioResponseSerializer
+    #permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def perform_create(self, serializer):
+        serializer.save()
+
+#for canditate who login using token
+
+#class AudioResponseUploadView(generics.CreateAPIView):
+    #queryset = AudioResponse.objects.all()
+    #serializer_class = AudioResponseSerializer
+    #ermission_classes = [IsAuthenticated]
+
+    #def perform_create(self, serializer):
+        #user = self.request.user
+        #serializer.save(user=user)
