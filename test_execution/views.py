@@ -74,3 +74,11 @@ class AudioUploadView(generics.CreateAPIView):
     #def perform_create(self, serializer):
         #user = self.request.user
         #serializer.save(user=user)
+
+class VideoUploadView(generics.CreateAPIView):
+    queryset = VideoResponse.objects.all()
+    serializer_class = VideoResponseSerializer
+    parser_classes = [MultiPartParser, FormParser]
+    
+    def perform_create(self, serializer):
+        serializer.save()

@@ -88,8 +88,19 @@ class AudioResponse(models.Model):
 
 #class AudioResponse(models.Model):
     #user = models.ForeignKey(User, on_delete=models.CASCADE)
+    #question = models.ForeignKey(Question, on_delete=models.CASCADE)
     #audio_file = models.FileField(upload_to='audio_responses/')
     #timestamp = models.DateTimeField(auto_now_add=True)
 
     #def __str__(self):
         #return f"{self.user.username} - {self.timestamp}"
+
+class VideoResponse(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    video = models.FileField(upload_to='video_responses/')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"VideoResponse by {self.user.username} at {self.created_at}"
+
