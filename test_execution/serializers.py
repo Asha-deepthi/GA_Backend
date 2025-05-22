@@ -7,7 +7,7 @@ from .models import (
 class BasicDetailsSerializer(serializers.ModelSerializer):
     class Meta:
         model = BasicDetails
-        fields = '__all__'
+        fields = ['id', 'name', 'email', 'phone_number']
 
 class DemoQuestionSerializer(serializers.ModelSerializer):
     class Meta:
