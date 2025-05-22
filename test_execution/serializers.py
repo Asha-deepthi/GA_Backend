@@ -59,4 +59,5 @@ class VideoResponseSerializer(serializers.ModelSerializer):
     class Meta:
         model = VideoResponse
         fields = '__all__'
+        read_only_fields = ['user', 'created_at', 'id']
 
