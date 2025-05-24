@@ -2,13 +2,14 @@ from django.urls import path
 from .views import (
     BasicDetailsCreateView, GetUserView, DemoQuestionListView, TestSessionListCreateView, TestSessionDetailView, AnswerListCreateView,
     AnswerDetailView, ProctoringLogListCreateView, ProctoringLogDetailView, ProctorCommentListCreateView, ProctorCommentDetailView,
-    PageContentListCreateView, PageContentDetailView, AudioUploadView, VideoUploadView,
+    PageContentListCreateView, PageContentDetailView, AudioUploadView, VideoUploadView, DemoAudioUploadView
 )
  
 urlpatterns = [
     path('submit-details/', BasicDetailsCreateView.as_view(), name='submit-details'),
     path('demo-questions/', DemoQuestionListView.as_view(), name='demo-questions'),
     path('get-user/<int:pk>/',GetUserView.as_view(),name='get-user'),
+    
     # TestSession
     path('test-sessions/', TestSessionListCreateView.as_view(), name='testsession-list-create'),
     path('test-sessions/<int:pk>/', TestSessionDetailView.as_view(), name='testsession-detail'),
@@ -32,4 +33,6 @@ urlpatterns = [
     path('upload-audio/', AudioUploadView.as_view(), name='upload-audio'),
 
     path('upload-video/', VideoUploadView.as_view(), name='upload-video'),
+
+    path('upload-demo-audio/', DemoAudioUploadView.as_view(), name='upload-demo-audio'),
 ]
