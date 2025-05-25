@@ -25,6 +25,7 @@ class DemoQuestion(models.Model):
     question_text = models.TextField()
     question_type = models.CharField(max_length=10, choices=QUESTION_TYPES)
     options = models.JSONField(blank=True, null=True)  # Only used for MCQ
+    is_demo = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.question_type.upper()} - {self.question_text[:50]}"
@@ -104,3 +105,10 @@ class VideoResponse(models.Model):
     def __str__(self):
         return f"VideoResponse by {self.user.username} at {self.created_at}"
 
+class DemoAudioResponse(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    demo_audio_file = models.FileField(upload_to='demo_audio_responses/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"DemoAudioResponse by {self.user.username} at {self.uploaded_at}"

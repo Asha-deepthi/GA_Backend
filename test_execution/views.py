@@ -86,3 +86,12 @@ class VideoUploadView(generics.CreateAPIView):
     
     def perform_create(self, serializer):
         serializer.save()
+
+class DemoAudioUploadView(generics.CreateAPIView):
+    queryset = DemoAudioResponse.objects.all()
+    serializer_class = DemoAudioResponseSerializer
+    #permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def perform_create(self, serializer):
+        serializer.save()
