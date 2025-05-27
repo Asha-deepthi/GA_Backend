@@ -1,6 +1,7 @@
 from django.db import models
 from test_creation.models import Test, Question, Section
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -47,9 +48,18 @@ class TestSession(models.Model):
 class Answer(models.Model):
     session = models.ForeignKey(TestSession, on_delete=models.CASCADE)
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
-    answer_content = models.JSONField()  # Can be text or structured JSON depending on question_type
-    is_correct = models.BooleanField(null=True, blank=True)
-    marks_awarded = models.FloatField(null=True, blank=True)
+    
+    # Can hold MCQ option, fill-in-the-blank, subjective, integer responses
+    answer_text = models.TextField(null=True, blank=True)
+
+    # For audio/video type
+    audio_file = models.FileField(upload_to='audio_answers/', null=True, blank=True)
+    video_file = models.FileField(upload_to='video_answers/', null=True, blank=True)
+
+    submitted_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Answer to Q{self.question.id} by Session {self.session.id}"
 
 class ProctoringLog(models.Model):
     EVENT_TYPE_CHOICES = [
