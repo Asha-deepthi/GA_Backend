@@ -40,7 +40,10 @@ class Question(models.Model):
         ('MCQ', 'Multiple Choice'),
         ('subjective', 'Subjective'),
         ('code', 'Coding'),
-        ('fill_in_the_blanks', 'Fill in the Blanks'),
+        ('fill_in_the_blank', 'Fill in the Blank'),
+        ('audio','Audio'),
+        ('video', 'Video'),
+        ('integer','Integer'),
     ]
 
     test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name='questions')
