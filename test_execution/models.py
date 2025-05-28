@@ -49,14 +49,21 @@ class Answer(models.Model):
     session = models.ForeignKey(TestSession, on_delete=models.CASCADE)
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
     
-    # Can hold MCQ option, fill-in-the-blank, subjective, integer responses
+    # Supports all types
     answer_text = models.TextField(null=True, blank=True)
-
-    # For audio/video type
     audio_file = models.FileField(upload_to='audio_answers/', null=True, blank=True)
     video_file = models.FileField(upload_to='video_answers/', null=True, blank=True)
 
+    # New field
+    marked_for_review = models.BooleanField(default=False)
+
     submitted_at = models.DateTimeField(auto_now_add=True)
+
+    def is_answered(self):
+        return bool(self.answer_text or self.audio_file or self.video_file)
+
+    def is_valid_for_evaluation(self):
+        return self.is_answered()
 
     def __str__(self):
         return f"Answer to Q{self.question.id} by Session {self.session.id}"
