@@ -10,7 +10,12 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 import os
+from django.core.mail import send_mail
 from decouple import config
+from datetime import timedelta
+
+from dotenv import load_dotenv
+load_dotenv()
 
 from pathlib import Path
 
@@ -29,17 +34,20 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-
-CORS_ALLOW_ALL_ORIGINS = True
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# settings.py
+
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # 👈 for dev/testing
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'morthakalyani05@gmail.com'        # Your Gmail address
-EMAIL_HOST_PASSWORD = 'lslmxizfidxlygzp'  # Your Gmail app password or account password
+EMAIL_HOST_USER = 'morthakalyani05@gmail.com'
+EMAIL_HOST_PASSWORD = 'lslm xizf idxl ygzp'
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+FRONTEND_URL = 'http://localhost:5173'
+BACKEND_URL = 'http://localhost:8000'
+
 
 
 REST_FRAMEWORK = {
@@ -69,6 +77,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'test_creation.accounts',
     'test_creation',
+    'test_execution',
 ]
 
 MIDDLEWARE = [
@@ -139,7 +148,12 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ALGORITHM': 'HS256',
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 

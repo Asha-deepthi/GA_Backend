@@ -16,12 +16,14 @@ Including another URLconf
 """
 #backend/backend_project/urls.py
 from django.contrib import admin
-from django.urls import path , include
+from django.urls import path, include
+from test_creation.accounts.views import SendVerificationEmailView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-     path('api/test-creation/', include('test_creation.urls')),
-    path('api/', include('test_creation.accounts.urls')),  # ✅ THIS IS NEEDED
+    path('api/test-creation/', include('test_creation.urls')),
+    path('api/', include('test_creation.accounts.urls')),  # include account endpoints
     path('test-execution/', include('test_execution.urls')),
+     path('api/signup/', SendVerificationEmailView.as_view(), name='signup')
 ]
 

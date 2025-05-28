@@ -1,5 +1,5 @@
 #backend/test_creation/accounts/models.py
-# backend/test_creation/accounts/models.py
+import uuid
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 from django.utils import timezone
@@ -29,6 +29,10 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
+    email_verification_uuid = models.UUIDField( unique=True, default=uuid.uuid4)
+    is_email_verified = models.BooleanField(default=False)
+
+
 
     objects = CustomUserManager()
 
