@@ -24,6 +24,13 @@ class AnswerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Answer
         fields = '__all__'
+        extra_kwargs = {
+            'answer_text': {'required': False, 'allow_null': True, 'allow_blank': True},
+            'audio_file': {'required': False, 'allow_null': True},
+            'video_file': {'required': False, 'allow_null': True},
+            'marked_for_review': {'required': False},  
+        }
+
 
 class ProctoringLogSerializer(serializers.ModelSerializer):
     class Meta:
