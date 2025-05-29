@@ -1,0 +1,64 @@
+[
+  {
+    "section_id": 1,
+    "section_name": "Basics of Computing",
+    "timer": 300,
+    "questions": [
+      {
+        "question_id": 1,
+        "question_type": "multiple_choice",
+        "question": "Which of the following is a primary memory device?",
+        "options": [
+          {"option": "A", "value": "Hard Disk"},
+          {"option": "B", "value": "RAM"},
+          {"option": "C", "value": "Pen Drive"},
+          {"option": "D", "value": "CD-ROM"}
+        ]
+      },
+      {
+        "question_id": 2,
+        "question_type": "fill_in_the_blank",
+        "question": "The binary representation of the decimal number 10 is _____."
+      },
+      {
+        "question_id": 3,
+        "question_type": "integer",
+        "question": "How many bits are there in 2 Kilobytes?"
+      },
+      {
+        "question_id": 4,
+        "question_type": "subjective",
+        "question": "Explain the difference between compiler and interpreter with examples."
+      }
+    ]
+  },
+  {
+    "section_id": 2,
+    "section_name": "Communication Skills",
+    "timer": 180,
+    "questions": [
+      {
+        "question_id": 5,
+        "question_type": "audio",
+        "question": "Briefly describe your favorite Computer Science project."
+      },
+      {
+        "question_id": 6,
+        "question_type": "video",
+        "question": "Introduce yourself and explain why you are interested in Computer Science."
+      }
+    ]
+  },
+  {
+    "section_id": 3,
+    "section_name": "Programming Practice",
+    "timer": 600,
+    "questions": [
+      {
+        "question_id": 7,
+        "question_type": "code",
+        "question": "Write a Python function to check if a given number is a prime number."
+      }
+    ]
+  }
+]

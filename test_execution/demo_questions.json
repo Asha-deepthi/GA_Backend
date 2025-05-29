@@ -35,5 +35,14 @@
       "question_type": "audio",
       "options": null
     }
+  },
+  {
+  "model": "test_execution.demoquestion",
+  "fields": {
+    "question_text": "What is the difference between a compiler and an interpreter?",
+    "question_type": "audio",
+    "options": null,
+    "is_demo": true
   }
+}
 ]

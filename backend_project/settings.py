@@ -34,7 +34,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-AUTH_USER_MODEL = 'accounts.CustomUser'
+CORS_ALLOW_ALL_ORIGINS = True
 
 # settings.py
 
@@ -75,9 +75,9 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'rest_framework_simplejwt',
-    'test_creation.accounts',
     'test_creation',
     'test_execution',
+    'users',
 ]
 
 MIDDLEWARE = [
@@ -118,14 +118,11 @@ WSGI_APPLICATION = 'backend_project.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'ga_backend_db',
-        'USER': 'ga_backend_user',
-        'PASSWORD': 'securepass',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
 
 
 
@@ -177,3 +174,8 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+AUTH_USER_MODEL = 'users.CustomUser'
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
