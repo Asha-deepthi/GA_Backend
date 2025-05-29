@@ -47,8 +47,8 @@ class TestSession(models.Model):
 
 class Answer(models.Model):
     # Temporarily using IntegerFields instead of ForeignKeys
-    session_id = models.IntegerField()  # Temporary substitute for ForeignKey to TestSession
-    question_id = models.IntegerField()  # Temporary substitute for ForeignKey to Question
+    session_id = models.IntegerField(null=True, blank=True)  # Temporary substitute for ForeignKey to TestSession
+    question_id = models.IntegerField(null=True, blank=True)  # Temporary substitute for ForeignKey to Question
 
     # Supports all types
     answer_text = models.TextField(null=True, blank=True)
