@@ -67,3 +67,4 @@ class Option(models.Model):
 
     def __str__(self):
         return f"Option for Q-{self.question.id}: {self.option_text[:30]}"
+
