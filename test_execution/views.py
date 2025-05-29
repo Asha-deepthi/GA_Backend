@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from rest_framework import generics
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -27,13 +28,30 @@ class TestSessionDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = TestSession.objects.all()
     serializer_class = TestSessionSerializer
 
-class AnswerListCreateView(generics.ListCreateAPIView):
-    queryset = Answer.objects.all()
-    serializer_class = AnswerSerializer
+class AnswerSubmissionView(APIView):
+    def post(self, request):
+        data = request.data
+        session_id = data.get("session_id")
+        question_id = data.get("question_id")
 
-class AnswerDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Answer.objects.all()
-    serializer_class = AnswerSerializer
+        if not session_id or not question_id:
+            return Response({"error": "session_id and question_id are required."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Try to get existing answer
+            answer = Answer.objects.get(session_id=session_id, question_id=question_id)
+            serializer = AnswerSerializer(answer, data=data, partial=True)
+        except Answer.DoesNotExist:
+            # Create new answer if not exists
+            serializer = AnswerSerializer(data=data)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Answer saved."}, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class ProctoringLogListCreateView(generics.ListCreateAPIView):
     queryset = ProctoringLog.objects.all()
