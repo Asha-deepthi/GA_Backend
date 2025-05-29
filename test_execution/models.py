@@ -76,6 +76,7 @@ class ProctoringLog(models.Model):
         ('noise', 'Noise'),
         ('multiple_people', 'Multiple People'),
         ('tab_switch', 'Tab Switch'),
+        ('fullscreen_exit', 'Fullscreen Exit'),
     ]
 
     session = models.ForeignKey(TestSession, on_delete=models.CASCADE)
