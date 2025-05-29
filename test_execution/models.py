@@ -46,9 +46,10 @@ class TestSession(models.Model):
     score = models.FloatField(null=True, blank=True)
 
 class Answer(models.Model):
-    session = models.ForeignKey(TestSession, on_delete=models.CASCADE)
-    question = models.ForeignKey(Question, on_delete=models.CASCADE)
-    
+    # Temporarily using IntegerFields instead of ForeignKeys
+    session_id = models.IntegerField()  # Temporary substitute for ForeignKey to TestSession
+    question_id = models.IntegerField()  # Temporary substitute for ForeignKey to Question
+
     # Supports all types
     answer_text = models.TextField(null=True, blank=True)
     audio_file = models.FileField(upload_to='audio_answers/', null=True, blank=True)
@@ -66,7 +67,7 @@ class Answer(models.Model):
         return self.is_answered()
 
     def __str__(self):
-        return f"Answer to Q{self.question.id} by Session {self.session.id}"
+        return f"Answer to Q{self.question_id} by Session {self.session_id}"
 
 class ProctoringLog(models.Model):
     EVENT_TYPE_CHOICES = [
