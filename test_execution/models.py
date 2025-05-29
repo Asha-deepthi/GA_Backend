@@ -79,7 +79,7 @@ class ProctoringLog(models.Model):
         ('fullscreen_exit', 'Fullscreen Exit'),
     ]
 
-    session = models.ForeignKey(TestSession, on_delete=models.CASCADE)
+    session_id = models.IntegerField(null=True, blank=True)  # Temporary substitute for ForeignKey to TestSession
     timestamp = models.DateTimeField(auto_now_add=True)
     event_type = models.CharField(max_length=50, choices=EVENT_TYPE_CHOICES)
     confidence = models.FloatField()
