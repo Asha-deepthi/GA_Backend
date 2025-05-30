@@ -10,7 +10,9 @@ from django.conf import settings
 from rest_framework.permissions import AllowAny
 from .models import CustomUser
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .serializers import CustomTokenObtainPairSerializer
+#from .serializers import CustomTokenObtainPairSerializer
+from .serializers import EmailOrPhoneLoginSerializer
+
 #from rest_framework import generics
 #from rest_framework.permissions import AllowAny, IsAuthenticated
 #from .serializers import RegisterSerializer, UserSerializer
@@ -36,14 +38,17 @@ class SendVerificationEmailView(APIView):
 
     def post(self, request):
         email = request.data.get('email')
+        phone = request.data.get('phone') 
         password = request.data.get('password')
 
         if not email or not password:
             return Response({"error": "Email and password are required"}, status=status.HTTP_400_BAD_REQUEST)
 
         user, created = CustomUser.objects.get_or_create(email=email)
+        phone = request.data.get('phone')
 
         if created:
+            user.phone = phone
             user.set_password(password)
             user.email_verification_uuid = uuid.uuid4()
             user.is_active = False  # keep it active but not verified
@@ -98,5 +103,14 @@ class VerifyEmailView(APIView):
         except CustomUser.DoesNotExist:
             return Response({"error": "Invalid or expired verification link."}, status=status.HTTP_400_BAD_REQUEST)
         
-class CustomTokenObtainPairView(TokenObtainPairView):
-    serializer_class = CustomTokenObtainPairSerializer
+#class CustomTokenObtainPairView(TokenObtainPairView):
+#   serializer_class = CustomTokenObtainPairSerializer
+
+class EmailOrPhoneLoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = EmailOrPhoneLoginSerializer(data=request.data)
+        if serializer.is_valid():
+            return Response(serializer.validated_data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
