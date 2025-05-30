@@ -6,7 +6,7 @@ from .views import (
     CreateTestView, ListTestView, TestDetailView,
     CreateSectionView, ListSectionsByTestView, SectionDetailView,
     CreateQuestionView, ListQuestionsBySectionView, QuestionDetailView,
-    CreateOptionView, ListOptionsByQuestionView, OptionDetailView
+    CreateOptionView, ListOptionsByQuestionView, OptionDetailView, fetch_section_questions,
 )
 
 urlpatterns = [
@@ -30,4 +30,6 @@ urlpatterns = [
     path('options/create/', CreateOptionView.as_view(), name='create-option'),
     path('questions/<uuid:question_id>/options/', ListOptionsByQuestionView.as_view(), name='list-options'),
     path('options/<uuid:option_id>/', OptionDetailView.as_view(), name='option-detail'),
+
+    path('fetch-section-questions/<int:section_id>/', fetch_section_questions),
 ]

@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import (
-    BasicDetailsCreateView, GetUserView, DemoQuestionListView, TestSessionListCreateView, TestSessionDetailView, AnswerListCreateView,
-    AnswerDetailView, ProctoringLogListCreateView, ProctoringLogDetailView, ProctorCommentListCreateView, ProctorCommentDetailView,
+    BasicDetailsCreateView, GetUserView, DemoQuestionListView, TestSessionListCreateView, TestSessionDetailView, AnswerSubmissionView,
+    ProctoringLogListCreateView, ProctoringLogDetailView, ProctorCommentListCreateView, ProctorCommentDetailView,
     PageContentListCreateView, PageContentDetailView, AudioUploadView, VideoUploadView, DemoAudioUploadView
 )
  
@@ -15,8 +15,7 @@ urlpatterns = [
     path('test-sessions/<int:pk>/', TestSessionDetailView.as_view(), name='testsession-detail'),
 
     # Answer
-    path('answers/', AnswerListCreateView.as_view(), name='answer-list-create'),
-    path('answers/<int:pk>/', AnswerDetailView.as_view(), name='answer-detail'),
+    path('answers/', AnswerSubmissionView.as_view(), name='answer-list-create'),
 
     # ProctoringLog
     path('proctoring-logs/', ProctoringLogListCreateView.as_view(), name='proctoringlog-list-create'),

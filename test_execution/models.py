@@ -49,6 +49,7 @@ class Answer(models.Model):
     # Temporarily using IntegerFields instead of ForeignKeys
     session_id = models.IntegerField(null=True, blank=True)  # Temporary substitute for ForeignKey to TestSession
     question_id = models.IntegerField(null=True, blank=True)  # Temporary substitute for ForeignKey to Question
+    question_type=models.CharField(max_length=50, null=True, blank=True)
 
     # Supports all types
     answer_text = models.TextField(null=True, blank=True)
@@ -75,9 +76,10 @@ class ProctoringLog(models.Model):
         ('noise', 'Noise'),
         ('multiple_people', 'Multiple People'),
         ('tab_switch', 'Tab Switch'),
+        ('fullscreen_exit', 'Fullscreen Exit'),
     ]
 
-    session = models.ForeignKey(TestSession, on_delete=models.CASCADE)
+    session_id = models.IntegerField(null=True, blank=True)  # Temporary substitute for ForeignKey to TestSession
     timestamp = models.DateTimeField(auto_now_add=True)
     event_type = models.CharField(max_length=50, choices=EVENT_TYPE_CHOICES)
     confidence = models.FloatField()

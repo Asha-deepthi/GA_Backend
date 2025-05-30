@@ -110,3 +110,4 @@ def fetch_section_questions(request, section_id):
             return JsonResponse(section, safe=False)
 
     return JsonResponse({'error': 'Section not found'}, status=404)
+
