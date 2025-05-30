@@ -29,8 +29,11 @@ class TestSessionDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = TestSessionSerializer
 
 class AnswerSubmissionView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+
     def post(self, request):
-        data = request.data
+        data = request.data.copy()  # Make mutable copy
+
         session_id = data.get("session_id")
         question_id = data.get("question_id")
 
@@ -38,12 +41,18 @@ class AnswerSubmissionView(APIView):
             return Response({"error": "session_id and question_id are required."},
                             status=status.HTTP_400_BAD_REQUEST)
 
+        # Attach file fields to data if available
+        if 'audio_file' in request.FILES:
+            data['answer'] = request.FILES['audio_file']
+        elif 'video_file' in request.FILES:
+            data['answer'] = request.FILES['video_file']
+
         try:
-            # Try to get existing answer
+            # Try to update existing answer
             answer = Answer.objects.get(session_id=session_id, question_id=question_id)
             serializer = AnswerSerializer(answer, data=data, partial=True)
         except Answer.DoesNotExist:
-            # Create new answer if not exists
+            # Create new answer
             serializer = AnswerSerializer(data=data)
 
         if serializer.is_valid():

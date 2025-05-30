@@ -6,7 +6,12 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from datetime import timedelta
+from rest_framework import serializers
+from django.contrib.auth import get_user_model
+from django.db.models import Q
 from rest_framework_simplejwt.tokens import RefreshToken
+from datetime import timedelta
+
 
 #from django.contrib.auth import get_user_model
 #from django.contrib.auth.password_validation import validate_password
@@ -36,6 +41,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 #        user = User.objects.create_user(**validated_data)
 #        return user
 
+User = get_user_model()
+
 class UserSignupSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
@@ -45,36 +52,42 @@ class UserSignupSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         return CustomUser.objects.create_user(**validated_data)
 
-class UserLoginSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+class EmailOrPhoneLoginSerializer(serializers.Serializer):
+    identifier = serializers.CharField()
     password = serializers.CharField(write_only=True)
+    remember_me = serializers.BooleanField(default=False)
 
     def validate(self, data):
-        user = authenticate(email=data['email'], password=data['password'])
-        if not user:
-            raise serializers.ValidationError("Invalid credentials")
+        identifier = data.get("identifier")
+        password = data.get("password")
+        remember_me = data.get("remember_me", False)
+
+        try:
+            user = User.objects.get(Q(email=identifier) | Q(phone=identifier))
+        except User.DoesNotExist:
+            raise serializers.ValidationError("User with given email or phone does not exist")
+
+        if not user.check_password(password):
+            raise serializers.ValidationError("Invalid password")
+
         if not user.is_active:
-            raise serializers.ValidationError("Account not activated.")
-        return user
+            raise serializers.ValidationError("Account is not active")
 
-class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    remember_me = False  # default
-
-    def validate(self, attrs):
-        self.remember_me = self.context['request'].data.get('remember_me', False)
-        data = super().validate(attrs)
-
-        # Create refresh token with custom expiry if remember_me is True
-        refresh = RefreshToken.for_user(self.user)
-
-        if self.remember_me:
-            refresh.set_exp(lifetime=timedelta(days=7))  # 7 days refresh token
-            refresh.access_token.set_exp(lifetime=timedelta(hours=1))  # 1 hour access token
+        # Generate token
+        refresh = RefreshToken.for_user(user)
+        if remember_me:
+            refresh.set_exp(lifetime=timedelta(days=7))
+            refresh.access_token.set_exp(lifetime=timedelta(hours=1))
         else:
-            refresh.set_exp(lifetime=timedelta(days=1))  # default 1 day refresh token
-            refresh.access_token.set_exp(lifetime=timedelta(minutes=5))  # default 5 minutes access token
+            refresh.set_exp(lifetime=timedelta(days=1))
+            refresh.access_token.set_exp(lifetime=timedelta(minutes=5))
 
-        data['refresh'] = str(refresh)
-        data['access'] = str(refresh.access_token)
-
-        return data
+        return {
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "phone": user.phone,
+            }
+        }
