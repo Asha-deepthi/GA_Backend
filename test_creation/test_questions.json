@@ -1,62 +1,162 @@
 [
   {
     "section_id": 1,
-    "section_name": "Basics of Computing",
+    "section_name": "Multiple Choice Questions",
+    "section_type": "multiple_choice",
     "timer": 300,
+    "marks": 1,
+    "negative_marks": 0.25,
     "questions": [
       {
         "question_id": 1,
-        "question_type": "multiple_choice",
         "question": "Which of the following is a primary memory device?",
-        "options": [
-          {"option": "A", "value": "Hard Disk"},
-          {"option": "B", "value": "RAM"},
-          {"option": "C", "value": "Pen Drive"},
-          {"option": "D", "value": "CD-ROM"}
-        ]
+        "options": ["Hard Disk", "RAM", "Pen Drive", "CD-ROM"],
+        "correct_answer": "RAM"
       },
       {
         "question_id": 2,
-        "question_type": "fill_in_the_blank",
-        "question": "The binary representation of the decimal number 10 is _____."
+        "question": "Which one is an input device?",
+        "options": ["Monitor", "Printer", "Keyboard", "Speaker"],
+        "correct_answer": "Keyboard"
       },
       {
         "question_id": 3,
-        "question_type": "integer",
-        "question": "How many bits are there in 2 Kilobytes?"
+        "question": "What does CPU stand for?",
+        "options": ["Central Process Unit", "Central Processing Unit", "Computer Personal Unit", "Central Power Unit"],
+        "correct_answer": "Central Processing Unit"
       },
       {
         "question_id": 4,
-        "question_type": "subjective",
-        "question": "Explain the difference between compiler and interpreter with examples."
+        "question": "Which of these is not a programming language?",
+        "options": ["Python", "HTML", "Java", "Linux"],
+        "correct_answer": "Linux"
       }
     ]
   },
   {
-    "section_id": 2,
-    "section_name": "Communication Skills",
-    "timer": 180,
+    "section_id": 5,
+    "section_name": "Fill in the Blanks",
+    "section_type": "fill_in_the_blank",
+    "timer": 240,
+    "marks": 1,
+    "negative_marks": 0.25,
     "questions": [
       {
         "question_id": 5,
-        "question_type": "audio",
-        "question": "Briefly describe your favorite Computer Science project."
+        "question": "The binary representation of the decimal number 10 is _____.",
+        "correct_answer": "1010"
       },
       {
         "question_id": 6,
-        "question_type": "video",
-        "question": "Introduce yourself and explain why you are interested in Computer Science."
+        "question": "CPU stands for _____.",
+        "correct_answer": "Central Processing Unit"
+      },
+      {
+        "question_id": 7,
+        "question": "A computer uses _____ to store data temporarily.",
+        "correct_answer": "RAM"
+      },
+      {
+        "question_id": 8,
+        "question": "The full form of HTML is _____.",
+        "correct_answer": "HyperText Markup Language"
       }
     ]
   },
   {
     "section_id": 3,
-    "section_name": "Programming Practice",
-    "timer": 600,
+    "section_name": "Integer Type Questions",
+    "section_type": "integer",
+    "timer": 240,
+    "marks": 2,
+    "negative_marks": 0.5,
     "questions": [
       {
-        "question_id": 7,
-        "question_type": "code",
+        "question_id": 9,
+        "question": "How many bits are there in 2 Kilobytes?",
+        "correct_answer": 16384
+      },
+      {
+        "question_id": 10,
+        "question": "How many bytes are there in 1 Megabyte?",
+        "correct_answer": 1048576
+      },
+      {
+        "question_id": 11,
+        "question": "How many bits are there in 4 bytes?",
+        "correct_answer": 32
+      },
+      {
+        "question_id": 12,
+        "question": "What is the result of 2^5?",
+        "correct_answer": 32
+      }
+    ]
+  },
+  {
+    "section_id": 4,
+    "section_name": "Subjective Questions",
+    "section_type": "subjective",
+    "timer": 300,
+    "marks": 5,
+    "negative_marks": 0,
+    "questions": [
+      {
+        "question_id": 13,
+        "question": "Explain the difference between compiler and interpreter with examples."
+      },
+      {
+        "question_id": 14,
+        "question": "Describe the OSI model and its layers."
+      },
+      {
+        "question_id": 15,
+        "question": "Discuss any real-world application of machine learning."
+      },
+      {
+        "question_id": 16,
+        "question": "Explain cloud computing and its benefits."
+      }
+    ]
+  },
+  {
+    "section_id": 2,
+    "section_name": "Audio Response Questions",
+    "section_type": "audio",
+    "timer": 180,
+    "marks": 5,
+    "negative_marks": 0,
+    "questions": [
+      {
+        "question_id": 17,
+        "question": "Briefly describe your favorite Computer Science project."
+      }
+    ]
+  },
+  {
+    "section_id": 6,
+    "section_name": "Video Response Questions",
+    "section_type": "video",
+    "timer": 180,
+    "marks": 5,
+    "negative_marks": 0,
+    "questions": [
+      {
+        "question_id": 18,
+        "question": "Introduce yourself and explain why you are interested in Computer Science."
+      }
+    ]
+  },
+  {
+    "section_id": 7,
+    "section_name": "Coding Questions",
+    "section_type": "code",
+    "timer": 600,
+    "marks": 10,
+    "negative_marks": 0,
+    "questions": [
+      {
+        "question_id": 19,
         "question": "Write a Python function to check if a given number is a prime number."
       }
     ]
