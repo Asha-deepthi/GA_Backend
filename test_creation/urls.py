@@ -6,7 +6,7 @@ from .views import (
     CreateTestView, ListTestView, TestDetailView,
     CreateSectionView, ListSectionsByTestView, SectionDetailView,
     CreateQuestionView, ListQuestionsBySectionView, QuestionDetailView,
-    CreateOptionView, ListOptionsByQuestionView, OptionDetailView, fetch_section_questions, GetTimerView,
+    CreateOptionView, ListOptionsByQuestionView, OptionDetailView, fetch_section_questions, GetTimerView, SaveTimerView,
 )
 
 urlpatterns = [
@@ -34,4 +34,6 @@ urlpatterns = [
     path('fetch-section-questions/<int:section_id>/', fetch_section_questions),
 
     path('get-timer/', GetTimerView.as_view(), name='get_timer'),
+
+    path('save-timer/', SaveTimerView.as_view(), name='save_timer'),
 ]

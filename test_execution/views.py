@@ -29,37 +29,39 @@ class TestSessionDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = TestSessionSerializer
 
 class AnswerSubmissionView(APIView):
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = (MultiPartParser, FormParser)
 
-    def post(self, request):
-        data = request.data.copy()  # Make mutable copy
+    def post(self, request, *args, **kwargs):
+        session_id = request.data.get('session_id')
+        section_id = request.data.get('section_id')
+        question_id = request.data.get('question_id')
+        question_type = request.data.get('question_type')
+        answer_text = request.data.get('answer_text')
+        marked_for_review = request.data.get('marked_for_review', False)
+        answer_status = request.data.get('status')
 
-        session_id = data.get("session_id")
-        question_id = data.get("question_id")
+        audio_file = request.FILES.get('audio_file')  # <-- Audio file
+        video_file = request.FILES.get('video_file')  # <-- Video file
 
-        if not session_id or not question_id:
-            return Response({"error": "session_id and question_id are required."},
-                            status=status.HTTP_400_BAD_REQUEST)
+        if not all([session_id, section_id, question_id, question_type]):
+            return Response({'error': 'Missing fields'}, status=http_status.HTTP_400_BAD_REQUEST)
 
-        # Attach file fields to data if available
-        if 'audio_file' in request.FILES:
-            data['answer'] = request.FILES['audio_file']
-        elif 'video_file' in request.FILES:
-            data['answer'] = request.FILES['video_file']
+        answer, created = Answer.objects.update_or_create(
+            session_id=session_id,
+            section_id=section_id,
+            question_id=question_id,
+            defaults={
+                'question_type': question_type,
+                'answer_text': answer_text,
+                'marked_for_review': marked_for_review,
+                'status': answer_status,
+                'audio_file': audio_file,
+                'video_file': video_file
+            }
+        )
 
-        try:
-            # Try to update existing answer
-            answer = Answer.objects.get(session_id=session_id, question_id=question_id)
-            serializer = AnswerSerializer(answer, data=data, partial=True)
-        except Answer.DoesNotExist:
-            # Create new answer
-            serializer = AnswerSerializer(data=data)
+        return Response({'message': 'Answer saved successfully'})
 
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "Answer saved."}, status=status.HTTP_200_OK)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class AnswerListView(APIView):
     def get(self, request):
