@@ -1,7 +1,7 @@
 # test_creation/views.py
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics, permissions
-from rest_framework.views import APIView
+from rest_framework.views import APIView , View
 from rest_framework.response import Response
 from .models import Test, Section, Question, Option
 from .serializers import TestSerializer, SectionSerializer, QuestionSerializer, OptionSerializer
@@ -150,3 +150,25 @@ def fetch_section_questions(request, section_id):
     cache.set(cache_key, response_data, timeout=60 * 60)
 
     return JsonResponse(response_data, safe=False)
+
+class GetTimerView(View):
+    def get(self, request):
+        section_id = request.GET.get('section_id')
+
+        if not section_id:
+            return JsonResponse({'error': 'section_id is required'}, status=400)
+
+        try:
+            # Assuming questions.json is in the same app directory
+            with open(settings.BASE_DIR / 'test_creation' / 'test_questions.json') as file:
+                sections = json.load(file)
+
+            section = next((s for s in sections if s['section_id'] == int(section_id)), None)
+
+            if not section:
+                return JsonResponse({'error': 'Section not found'}, status=404)
+
+            return JsonResponse({'timer': section.get('timer')})
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
