@@ -170,13 +170,16 @@ class SaveTimerView(View):
     def post(self, request):
         try:
             data = json.loads(request.body)
+            print("Received data in save-timer:", data)  # ✅ Add this line
             session_id = data.get('session_id')
             section_id = data.get('section_id')
             remaining_time = data.get('remaining_time')
         except (json.JSONDecodeError, KeyError):
             return JsonResponse({'error': 'Invalid JSON'}, status=400)
-
+        
+        print(f"Parsed -> session_id: {session_id}, section_id: {section_id}, remaining_time: {remaining_time}")  # ✅ Add this
         if not all([session_id, section_id, remaining_time]):
+            print("Missing one or more required fields")  # ✅ Add this
             return JsonResponse({'error': 'Missing parameters'}, status=400)
 
         timer, created = SectionTimer.objects.update_or_create(
@@ -184,4 +187,5 @@ class SaveTimerView(View):
             section_id=section_id,
             defaults={'remaining_time': remaining_time}
         )
+        print("Timer saved or updated")  # ✅ Add this
         return JsonResponse({'message': 'Timer saved successfully'})
