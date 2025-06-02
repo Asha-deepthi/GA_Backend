@@ -130,6 +130,14 @@
       {
         "question_id": 17,
         "question": "Briefly describe your favorite Computer Science project."
+      },
+      {
+        "question_id": 18,
+        "question": "Briefly describe your favorite Computer Science project."
+      },
+      {
+        "question_id": 19,
+        "question": "Briefly describe your favorite Computer Science project."
       }
     ]
   },
@@ -142,7 +150,15 @@
     "negative_marks": 0,
     "questions": [
       {
-        "question_id": 18,
+        "question_id": 20,
+        "question": "Introduce yourself and explain why you are interested in Computer Science."
+      },
+      {
+        "question_id": 21,
+        "question": "Introduce yourself and explain why you are interested in Computer Science."
+      },
+      {
+        "question_id": 22,
         "question": "Introduce yourself and explain why you are interested in Computer Science."
       }
     ]
@@ -156,7 +172,15 @@
     "negative_marks": 0,
     "questions": [
       {
-        "question_id": 19,
+        "question_id": 23,
+        "question": "Write a Python function to check if a given number is a prime number."
+      },
+      {
+        "question_id": 24,
+        "question": "Write a Python function to check if a given number is a prime number."
+      },
+      {
+        "question_id": 25,
         "question": "Write a Python function to check if a given number is a prime number."
       }
     ]
