@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     BasicDetailsCreateView, GetUserView, DemoQuestionListView, TestSessionListCreateView, TestSessionDetailView, AnswerSubmissionView,
     ProctoringLogListCreateView, ProctoringLogDetailView, ProctorCommentListCreateView, ProctorCommentDetailView,
-    PageContentListCreateView, PageContentDetailView, AudioUploadView, VideoUploadView, DemoAudioUploadView
+    PageContentListCreateView, PageContentDetailView, AudioUploadView, VideoUploadView, DemoAudioUploadView, AnswerListView
 )
  
 urlpatterns = [
@@ -16,6 +16,7 @@ urlpatterns = [
 
     # Answer
     path('answers/', AnswerSubmissionView.as_view(), name='answer-list-create'),
+    path('get-answers/', AnswerListView.as_view(), name='get_answers'),
 
     # ProctoringLog
     path('proctoring-logs/', ProctoringLogListCreateView.as_view(), name='proctoringlog-list-create'),
