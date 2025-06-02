@@ -1,11 +1,15 @@
 # test_creation/views.py
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics, permissions
+from rest_framework.views import APIView
+from rest_framework.response import Response
 from .models import Test, Section, Question, Option
 from .serializers import TestSerializer, SectionSerializer, QuestionSerializer, OptionSerializer
 import json
 from django.http import JsonResponse
 from django.conf import settings
+from django.core.cache import cache
+import random
 
 # Test Views (already created)
 class CreateTestView(generics.CreateAPIView):
@@ -102,12 +106,47 @@ class OptionDetailView(generics.RetrieveAPIView):
     lookup_field = 'id'
 
 def fetch_section_questions(request, section_id):
-    with open(settings.BASE_DIR / 'test_creation' / 'test_questions.json') as f:
-        data = json.load(f)
+    print("Request GET params:", request.GET)  # add this line to console log
+    # Get session_id from query parameters
+    session_id = request.GET.get('session_id')
+    if not session_id:
+        return JsonResponse({'error': 'Session ID is required as a query parameter'}, status=400)
 
-    for section in data:
-        if section.get("section_id") == section_id:
-            return JsonResponse(section, safe=False)
+    # Create a cache key using section_id and session_id
+    cache_key = f"json_qns_s{section_id}_sess{session_id}"
+    cached_data = cache.get(cache_key)
 
-    return JsonResponse({'error': 'Section not found'}, status=404)
+    if cached_data:
+        return JsonResponse(cached_data, safe=False)
 
+    # Load JSON data
+    try:
+        with open(settings.BASE_DIR / 'test_creation' / 'test_questions.json') as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        return JsonResponse({'error': 'Question file not found'}, status=500)
+
+    # Find the section with the matching ID
+    section_data = next((sec for sec in data if sec.get("section_id") == section_id), None)
+
+    if not section_data:
+        return JsonResponse({'error': 'Section not found'}, status=404)
+
+    questions = section_data.get("questions", [])
+
+    # Shuffle questions and their options
+    random.shuffle(questions)
+    for question in questions:
+        if "options" in question:
+            random.shuffle(question["options"])
+
+    # Prepare response data
+    response_data = {
+        "section_type": section_data.get("section_type", "unknown"),
+        "questions": questions
+    }
+
+    # Cache the result for 1 hour
+    cache.set(cache_key, response_data, timeout=60 * 60)
+
+    return JsonResponse(response_data, safe=False)
