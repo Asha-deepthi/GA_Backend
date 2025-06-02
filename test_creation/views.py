@@ -168,9 +168,13 @@ class GetTimerView(View):
 
 class SaveTimerView(View):
     def post(self, request):
-        session_id = request.POST.get('session_id')
-        section_id = request.POST.get('section_id')
-        remaining_time = request.POST.get('remaining_time')
+        try:
+            data = json.loads(request.body)
+            session_id = data.get('session_id')
+            section_id = data.get('section_id')
+            remaining_time = data.get('remaining_time')
+        except (json.JSONDecodeError, KeyError):
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
 
         if not all([session_id, section_id, remaining_time]):
             return JsonResponse({'error': 'Missing parameters'}, status=400)
