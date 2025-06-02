@@ -61,6 +61,25 @@ class AnswerSubmissionView(APIView):
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class AnswerListView(APIView):
+    def get(self, request):
+        session_id = request.GET.get('session_id')
+        section_id = request.GET.get('section_id')
+
+        if not session_id or not section_id:
+            return Response({"error": "session_id and section_id are required."}, status=400)
+
+        answers = Answer.objects.filter(session_id=session_id, section_id=section_id)
+        data = []
+        for ans in answers:
+            data.append({
+                "question_id": ans.question_id,
+                "answer_text": ans.answer_text,
+                "marked_for_review": ans.marked_for_review,
+                "status": ans.status,
+            })
+        return Response(data, status=200)
+
 
 class ProctoringLogListCreateView(generics.ListCreateAPIView):
     queryset = ProctoringLog.objects.all()
