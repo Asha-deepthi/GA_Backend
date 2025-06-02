@@ -48,8 +48,10 @@ class TestSession(models.Model):
 class Answer(models.Model):
     # Temporarily using IntegerFields instead of ForeignKeys
     session_id = models.IntegerField(null=True, blank=True)  # Temporary substitute for ForeignKey to TestSession
+    section_id = models.IntegerField(null=True, blank=True)
     question_id = models.IntegerField(null=True, blank=True)  # Temporary substitute for ForeignKey to Question
     question_type=models.CharField(max_length=50, null=True, blank=True)
+    status = models.CharField(max_length=20, null=True, blank=True)
 
     # Supports all types
     answer_text = models.TextField(null=True, blank=True)
@@ -77,6 +79,7 @@ class ProctoringLog(models.Model):
         ('multiple_people', 'Multiple People'),
         ('tab_switch', 'Tab Switch'),
         ('fullscreen_exit', 'Fullscreen Exit'),
+        ('WindowBlur', 'Window Blur'),
     ]
 
     session_id = models.IntegerField(null=True, blank=True)  # Temporary substitute for ForeignKey to TestSession

@@ -10,6 +10,7 @@ from django.http import JsonResponse
 from django.conf import settings
 from django.core.cache import cache
 import random
+from .models import SectionTimer
 
 # Test Views (already created)
 class CreateTestView(generics.CreateAPIView):
@@ -153,22 +154,30 @@ def fetch_section_questions(request, section_id):
 
 class GetTimerView(View):
     def get(self, request):
+        session_id = request.GET.get('session_id')
         section_id = request.GET.get('section_id')
 
-        if not section_id:
-            return JsonResponse({'error': 'section_id is required'}, status=400)
+        if not all([session_id, section_id]):
+            return JsonResponse({'error': 'Missing parameters'}, status=400)
 
         try:
-            # Assuming questions.json is in the same app directory
-            with open(settings.BASE_DIR / 'test_creation' / 'test_questions.json') as file:
-                sections = json.load(file)
+            timer = SectionTimer.objects.get(session_id=session_id, section_id=section_id)
+            return JsonResponse({'remaining_time': timer.remaining_time})
+        except SectionTimer.DoesNotExist:
+            return JsonResponse({'remaining_time': None})
 
-            section = next((s for s in sections if s['section_id'] == int(section_id)), None)
+class SaveTimerView(View):
+    def post(self, request):
+        session_id = request.POST.get('session_id')
+        section_id = request.POST.get('section_id')
+        remaining_time = request.POST.get('remaining_time')
 
-            if not section:
-                return JsonResponse({'error': 'Section not found'}, status=404)
+        if not all([session_id, section_id, remaining_time]):
+            return JsonResponse({'error': 'Missing parameters'}, status=400)
 
-            return JsonResponse({'timer': section.get('timer')})
-
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+        timer, created = SectionTimer.objects.update_or_create(
+            session_id=session_id,
+            section_id=section_id,
+            defaults={'remaining_time': remaining_time}
+        )
+        return JsonResponse({'message': 'Timer saved successfully'})
