@@ -32,35 +32,31 @@ class AnswerSubmissionView(APIView):
     parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request, *args, **kwargs):
-        session_id = request.data.get('session_id')
-        section_id = request.data.get('section_id')
-        question_id = request.data.get('question_id')
-        section_type = request.data.get('section_type')  # Use this instead of question_type
-        answer_text = request.data.get('answer_text')
-        marked_for_review = request.data.get('marked_for_review', False)
-        answer_status = request.data.get('status')
+     session_id = request.data.get('session_id')
+     section_id = request.data.get('section_id')
+     question_id = request.data.get('question_id')
+     section_type = request.data.get('question_type')  # FIXED: added definition
+     answer_text = request.data.get('answer_text')
+     marked_for_review = request.data.get('marked_for_review', 'false').lower() == 'true'  # FIXED
+     status = request.data.get('status') or 'unanswered'
 
-        audio_file = request.FILES.get('audio_file')
-        video_file = request.FILES.get('video_file')
+     if not all([session_id, section_id, question_id, section_type]):
+        return Response({"error": "Missing required fields."}, status=400)
 
-        if not all([session_id, section_id, question_id, section_type]):
-            return Response({'error': 'Missing fields'}, status=status.HTTP_400_BAD_REQUEST)
+     answer, created = Answer.objects.update_or_create(
+        session_id=session_id,
+        question_id=question_id,
+        defaults={
+            'section_id': section_id,
+            'question_type': section_type,
+            'answer_text': answer_text,
+            'marked_for_review': marked_for_review,
+            'status': status,
+        }
+    )
 
-        answer, created = Answer.objects.update_or_create(
-            session_id=session_id,
-            section_id=section_id,
-            question_id=question_id,
-            defaults={
-                'question_type': section_type,  # Save section_type as question_type
-                'answer_text': answer_text,
-                'marked_for_review': marked_for_review,
-                'status': answer_status,
-                'audio_file': audio_file,
-                'video_file': video_file
-            }
-        )
+     return Response({"message": "Answer saved successfully"}, status=201)
 
-        return Response({'message': 'Answer saved successfully'})
 
 
 class AnswerListView(APIView):
