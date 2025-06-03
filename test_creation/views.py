@@ -11,6 +11,8 @@ from django.conf import settings
 from django.core.cache import cache
 import random
 from .models import SectionTimer
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 
 # Test Views (already created)
 class CreateTestView(generics.CreateAPIView):
@@ -166,20 +168,21 @@ class GetTimerView(View):
         except SectionTimer.DoesNotExist:
             return JsonResponse({'remaining_time': None})
 
+@method_decorator(csrf_exempt, name='dispatch')
 class SaveTimerView(View):
     def post(self, request):
         try:
             data = json.loads(request.body)
-            print("Received data in save-timer:", data)  # ✅ Add this line
+            print("Received data in save-timer:", data) 
             session_id = data.get('session_id')
             section_id = data.get('section_id')
             remaining_time = data.get('remaining_time')
         except (json.JSONDecodeError, KeyError):
             return JsonResponse({'error': 'Invalid JSON'}, status=400)
         
-        print(f"Parsed -> session_id: {session_id}, section_id: {section_id}, remaining_time: {remaining_time}")  # ✅ Add this
-        if not all([session_id, section_id, remaining_time]):
-            print("Missing one or more required fields")  # ✅ Add this
+        print(f"Parsed -> session_id: {session_id}, section_id: {section_id}, remaining_time: {remaining_time}")  
+        if session_id is None or section_id is None or remaining_time is None:
+            print("Missing one or more required fields")  
             return JsonResponse({'error': 'Missing parameters'}, status=400)
 
         timer, created = SectionTimer.objects.update_or_create(
@@ -187,5 +190,5 @@ class SaveTimerView(View):
             section_id=section_id,
             defaults={'remaining_time': remaining_time}
         )
-        print("Timer saved or updated")  # ✅ Add this
+        print("Timer saved or updated")  
         return JsonResponse({'message': 'Timer saved successfully'})

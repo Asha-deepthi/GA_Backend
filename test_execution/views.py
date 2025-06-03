@@ -35,23 +35,23 @@ class AnswerSubmissionView(APIView):
         session_id = request.data.get('session_id')
         section_id = request.data.get('section_id')
         question_id = request.data.get('question_id')
-        question_type = request.data.get('question_type')
+        section_type = request.data.get('section_type')  # Use this instead of question_type
         answer_text = request.data.get('answer_text')
         marked_for_review = request.data.get('marked_for_review', False)
         answer_status = request.data.get('status')
 
-        audio_file = request.FILES.get('audio_file')  # <-- Audio file
-        video_file = request.FILES.get('video_file')  # <-- Video file
+        audio_file = request.FILES.get('audio_file')
+        video_file = request.FILES.get('video_file')
 
-        if not all([session_id, section_id, question_id, question_type]):
-            return Response({'error': 'Missing fields'}, status=http_status.HTTP_400_BAD_REQUEST)
+        if not all([session_id, section_id, question_id, section_type]):
+            return Response({'error': 'Missing fields'}, status=status.HTTP_400_BAD_REQUEST)
 
         answer, created = Answer.objects.update_or_create(
             session_id=session_id,
             section_id=section_id,
             question_id=question_id,
             defaults={
-                'question_type': question_type,
+                'question_type': section_type,  # Save section_type as question_type
                 'answer_text': answer_text,
                 'marked_for_review': marked_for_review,
                 'status': answer_status,
