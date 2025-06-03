@@ -2,7 +2,8 @@ from django.urls import path
 from .views import (
     BasicDetailsCreateView, GetUserView, DemoQuestionListView, TestSessionListCreateView, TestSessionDetailView, AnswerSubmissionView,
     ProctoringLogListCreateView, ProctoringLogDetailView, ProctorCommentListCreateView, ProctorCommentDetailView,
-    PageContentListCreateView, PageContentDetailView, AudioUploadView, VideoUploadView, DemoAudioUploadView, AnswerListView
+    PageContentListCreateView, PageContentDetailView, AudioUploadView, VideoUploadView, DemoAudioUploadView, AnswerListView,
+    ProctoringScreenshotUploadView
 )
  
 urlpatterns = [
@@ -25,6 +26,7 @@ urlpatterns = [
     # ProctorComment
     path('proctor-comments/', ProctorCommentListCreateView.as_view(), name='proctorcomment-list-create'),
     path('proctor-comments/<int:pk>/', ProctorCommentDetailView.as_view(), name='proctorcomment-detail'),
+    path('proctoring-screenshots/', ProctoringScreenshotUploadView.as_view(), name='proctoring-screenshot-upload'),
 
     # PageContent
     path('page-contents/', PageContentListCreateView.as_view(), name='pagecontent-list-create'),

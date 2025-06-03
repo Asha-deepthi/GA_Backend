@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import (
     BasicDetails, DemoQuestion, TestSession, Answer, ProctoringLog,
     ProctorComment, PageContent, BasicDetails, DemoQuestion, AudioResponse, VideoResponse,
-    DemoAudioResponse
+    DemoAudioResponse, ProctoringScreenshot
 )
 
 class BasicDetailsSerializer(serializers.ModelSerializer):
@@ -57,3 +57,8 @@ class DemoAudioResponseSerializer(serializers.ModelSerializer):
         model = DemoAudioResponse
         fields = ['id', 'user', 'demo_audio_file', 'uploaded_at']
         read_only_fields = ['id', 'uploaded_at', 'user']
+
+class ProctoringScreenshotSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProctoringScreenshot
+        fields = ['id', 'session', 'screenshot', 'timestamp']
