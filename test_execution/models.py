@@ -50,7 +50,7 @@ class Answer(models.Model):
     session_id = models.IntegerField(null=True, blank=True)  # Temporary substitute for ForeignKey to TestSession
     section_id = models.IntegerField(null=True, blank=True)
     question_id = models.IntegerField(null=True, blank=True)  # Temporary substitute for ForeignKey to Question
-    question_type=models.CharField(max_length=50, null=True, blank=True)
+    question_type = models.CharField(max_length=50, null=True, blank=True)
     status = models.CharField(max_length=20, null=True, blank=True)
 
     # Supports all types
@@ -58,8 +58,12 @@ class Answer(models.Model):
     audio_file = models.FileField(upload_to='audio_answers/', null=True, blank=True)
     video_file = models.FileField(upload_to='video_answers/', null=True, blank=True)
 
-    # New field
+    # New fields
     marked_for_review = models.BooleanField(default=False)
+    
+    # ✅ NEW FIELDS FOR MARKS
+    marks_allotted = models.FloatField(default=0)
+    evaluated = models.BooleanField(default=False)  # True if auto-evaluated or manually evaluated
 
     submitted_at = models.DateTimeField(auto_now_add=True)
 

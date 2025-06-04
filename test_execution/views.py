@@ -32,32 +32,76 @@ class AnswerSubmissionView(APIView):
     parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request, *args, **kwargs):
-     session_id = request.data.get('session_id')
-     section_id = request.data.get('section_id')
-     question_id = request.data.get('question_id')
-     section_type = request.data.get('question_type')  # FIXED: added definition
-     answer_text = request.data.get('answer_text')
-     marked_for_review = request.data.get('marked_for_review', 'false').lower() == 'true'  # FIXED
-     status = request.data.get('status') or 'unanswered'
+        session_id = request.data.get('session_id')
+        section_id = request.data.get('section_id')
+        question_id = request.data.get('question_id')
+        question_type = request.data.get('question_type')  # Corrected name
+        answer_text = request.data.get('answer_text')
+        marked_for_review = request.data.get('marked_for_review', 'false').lower() == 'true'
+        status = request.data.get('status') or 'unanswered'
 
-     if not all([session_id, section_id, question_id, section_type]):
-        return Response({"error": "Missing required fields."}, status=400)
+        if not all([session_id, section_id, question_id, question_type]):
+            return Response({"error": "Missing required fields."}, status=400)
 
-     answer, created = Answer.objects.update_or_create(
-        session_id=session_id,
-        question_id=question_id,
-        defaults={
-            'section_id': section_id,
-            'question_type': section_type,
-            'answer_text': answer_text,
-            'marked_for_review': marked_for_review,
-            'status': status,
-        }
-    )
+        # ✅ Auto-evaluate logic
+        marks_allotted = 0
+        evaluated = False
 
-     return Response({"message": "Answer saved successfully"}, status=201)
+        try:
+            question = Question.objects.get(id=question_id)
+        except Question.DoesNotExist:
+            return Response({"error": "Question not found"}, status=404)
 
+        if question_type.lower() in ['mcq', 'fill_in_the_blank', 'integer']:
+            correct = str(question.correct_answer).strip().lower()
+            submitted = str(answer_text).strip().lower()
+            if correct == submitted:
+                marks_allotted = question.marks
+            evaluated = True
+        else:
+            # Subjective, Audio, Video — manual evaluation later
+            marks_allotted = 0
+            evaluated = False
 
+        # ✅ Save answer
+        answer, created = Answer.objects.update_or_create(
+            session_id=session_id,
+            question_id=question_id,
+            defaults={
+                'section_id': section_id,
+                'question_type': question_type,
+                'answer_text': answer_text,
+                'marked_for_review': marked_for_review,
+                'status': status,
+                'audio_file': request.FILES.get('audio_file'),
+                'video_file': request.FILES.get('video_file'),
+                'marks_allotted': marks_allotted,
+                'evaluated': evaluated,
+            }
+        )
+
+        return Response({
+            "message": "Answer saved successfully",
+            "marks_allotted": marks_allotted,
+            "evaluated": evaluated
+        }, status=201)
+
+class ManualAnswerEvaluationView(APIView):
+    def post(self, request):
+        answer_id = request.data.get('answer_id')
+        marks = request.data.get('marks')
+
+        if not answer_id or marks is None:
+            return Response({'error': 'Missing answer_id or marks'}, status=400)
+
+        try:
+            answer = Answer.objects.get(id=answer_id)
+            answer.marks_allotted = marks
+            answer.evaluated = True
+            answer.save()
+            return Response({'message': 'Answer manually evaluated'})
+        except Answer.DoesNotExist:
+            return Response({'error': 'Answer not found'}, status=404)
 
 class AnswerListView(APIView):
     def get(self, request):

@@ -3,7 +3,7 @@ from .views import (
     BasicDetailsCreateView, GetUserView, DemoQuestionListView, TestSessionListCreateView, TestSessionDetailView, AnswerSubmissionView,
     ProctoringLogListCreateView, ProctoringLogDetailView, ProctorCommentListCreateView, ProctorCommentDetailView,
     PageContentListCreateView, PageContentDetailView, AudioUploadView, VideoUploadView, DemoAudioUploadView, AnswerListView,
-    ProctoringScreenshotUploadView
+    ProctoringScreenshotUploadView, ManualAnswerEvaluationView
 )
  
 urlpatterns = [
@@ -18,6 +18,7 @@ urlpatterns = [
     # Answer
     path('answers/', AnswerSubmissionView.as_view(), name='answer-list-create'),
     path('get-answers/', AnswerListView.as_view(), name='get_answers'),
+    path('manual-evaluate/', ManualAnswerEvaluationView.as_view(), name='manual-evaluate'),
 
     # ProctoringLog
     path('proctoring-logs/', ProctoringLogListCreateView.as_view(), name='proctoringlog-list-create'),
