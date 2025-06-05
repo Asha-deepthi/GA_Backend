@@ -92,6 +92,8 @@ class AnswerSubmissionView(APIView):
     parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request, *args, **kwargs):
+        print("AnswerSubmissionView POST called with data:", request.data)
+        
         session_id = request.data.get('session_id')
         section_id = request.data.get('section_id')
         question_id = request.data.get('question_id')
@@ -100,39 +102,51 @@ class AnswerSubmissionView(APIView):
         marked_for_review = request.data.get('marked_for_review', 'false').lower() == 'true'
         status = request.data.get('status') or 'unanswered'
 
+        # Validate required fields
         if not all([session_id, section_id, question_id, question_type]):
             return Response({"error": "Missing required fields."}, status=400)
 
-        # Load JSON questions
+        # Load JSON questions from file
         try:
             with open(settings.BASE_DIR / 'test_creation' / 'test_questions.json') as f:
                 questions_data = json.load(f)
-        except Exception:
+        except Exception as e:
+            print("Error loading questions JSON:", e)
             return Response({"error": "Failed to load questions JSON."}, status=500)
 
-        # Find question by matching question_id (same key your frontend uses)
-        question = next((q for q in questions_data if str(q.get('question_id')) == str(question_id)), None)
+        # Find question by ID inside nested sections -> questions list
+        question = None
+        for section in questions_data:
+            for q in section.get('questions', []):
+                if str(q.get('question_id')) == str(question_id):
+                    question = q
+                    break
+            if question:
+                break
+
         if not question:
+            print("Question not found in JSON.")
             return Response({"error": "Question not found in JSON."}, status=404)
 
         marks_allotted = 0
         evaluated = False
 
-        # Map frontend sectionType to backend answer types for auto-eval
+        # List of question types that can be auto-evaluated
         auto_eval_types = ['multiple_choice', 'fill_in_the_blank', 'integer']
 
+        # Auto-evaluate if applicable
         if question_type.lower() in auto_eval_types:
             correct = str(question.get('correct_answer', '')).strip().lower()
             submitted = str(answer_text).strip().lower() if answer_text else ''
             if correct == submitted:
-                marks_allotted = question.get('marks', 0)
+                marks_allotted = section.get('marks', 0)  # Use marks of the section, not question
             evaluated = True
         else:
             # subjective, audio, video — manual evaluation later
             marks_allotted = 0
             evaluated = False
 
-        # Save or update answer
+        # Save or update answer in DB
         answer, created = Answer.objects.update_or_create(
             session_id=session_id,
             question_id=question_id,
@@ -149,6 +163,7 @@ class AnswerSubmissionView(APIView):
             }
         )
 
+        print("Returning success response")
         return Response({
             "message": "Answer saved successfully",
             "marks_allotted": marks_allotted,
