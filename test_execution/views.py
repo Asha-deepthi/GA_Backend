@@ -281,7 +281,7 @@ class ProctoringScreenshotUploadView(APIView):
         if not session_id:
             return Response({"error": "session_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        screenshots = ProctoringScreenshot.objects.filter(session_id=session_id)
+        screenshots = ProctoringScreenshot.objects.filter(session=session_id)
         serializer = ProctoringScreenshotSerializer(screenshots, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     

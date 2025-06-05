@@ -141,7 +141,7 @@ class DemoAudioResponse(models.Model):
         return f"DemoAudioResponse by {self.user.username} at {self.uploaded_at}"
 
 class ProctoringScreenshot(models.Model):
-    session = models.IntegerField(max_length=255)
+    session = models.IntegerField()
     screenshot = models.ImageField(upload_to='proctoring_screenshots/')
     timestamp = models.DateTimeField(auto_now_add=True)
 
