@@ -43,7 +43,7 @@ class AnswerSubmissionView(APIView):
         if not all([session_id, section_id, question_id, question_type]):
             return Response({"error": "Missing required fields."}, status=400)
 
-        # ✅ Auto-evaluate logic
+        #Auto-evaluate logic
         marks_allotted = 0
         evaluated = False
 
@@ -63,7 +63,7 @@ class AnswerSubmissionView(APIView):
             marks_allotted = 0
             evaluated = False
 
-        # ✅ Save answer
+        #Save answer
         answer, created = Answer.objects.update_or_create(
             session_id=session_id,
             question_id=question_id,

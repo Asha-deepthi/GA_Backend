@@ -61,7 +61,7 @@ class Answer(models.Model):
     # New fields
     marked_for_review = models.BooleanField(default=False)
     
-    # ✅ NEW FIELDS FOR MARKS
+    #NEW FIELDS FOR MARKS
     marks_allotted = models.FloatField(default=0)
     evaluated = models.BooleanField(default=False)  # True if auto-evaluated or manually evaluated
 
