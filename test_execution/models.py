@@ -38,7 +38,7 @@ class TestSession(models.Model):
         ('flagged', 'Flagged'),
     ]
 
-    test = models.ForeignKey(Test, on_delete=models.CASCADE)
+    #test = models.ForeignKey(Test, on_delete=models.CASCADE)
     candidate = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'role': 'candidate'})
     join_time = models.DateTimeField(auto_now_add=True)
     end_time = models.DateTimeField(null=True, blank=True)
