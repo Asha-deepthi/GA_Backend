@@ -93,7 +93,7 @@ class AnswerSubmissionView(APIView):
 
     def post(self, request, *args, **kwargs):
         print("AnswerSubmissionView POST called with data:", request.data)
-        
+
         session_id = request.data.get('session_id')
         section_id = request.data.get('section_id')
         question_id = request.data.get('question_id')
@@ -114,12 +114,14 @@ class AnswerSubmissionView(APIView):
             print("Error loading questions JSON:", e)
             return Response({"error": "Failed to load questions JSON."}, status=500)
 
-        # Find question by ID inside nested sections -> questions list
+        # Find question and its section by ID inside nested sections -> questions list
         question = None
-        for section in questions_data:
-            for q in section.get('questions', []):
+        section = None
+        for sec in questions_data:
+            for q in sec.get('questions', []):
                 if str(q.get('question_id')) == str(question_id):
                     question = q
+                    section = sec  # Save section reference here
                     break
             if question:
                 break
@@ -138,8 +140,12 @@ class AnswerSubmissionView(APIView):
         if question_type.lower() in auto_eval_types:
             correct = str(question.get('correct_answer', '')).strip().lower()
             submitted = str(answer_text).strip().lower() if answer_text else ''
+            print(f"[DEBUG] correct_answer: '{correct}', submitted_answer: '{submitted}'")
             if correct == submitted:
-                marks_allotted = section.get('marks', 0)  # Use marks of the section, not question
+                marks_allotted = section.get('marks', 0)  # Use marks of the section
+                print(f"[DEBUG] Marks allotted: {marks_allotted}")
+            else:
+                print("[DEBUG] Answer incorrect or empty")
             evaluated = True
         else:
             # subjective, audio, video — manual evaluation later
@@ -170,6 +176,7 @@ class AnswerSubmissionView(APIView):
             "evaluated": evaluated
         }, status=201)
 
+
 class ManualAnswerEvaluationView(APIView):
     def post(self, request):
         answer_id = request.data.get('answer_id')
@@ -197,14 +204,22 @@ class AnswerListView(APIView):
 
         answers = Answer.objects.filter(session_id=session_id, section_id=section_id)
         data = []
+
         for ans in answers:
             data.append({
+                "answer_id": ans.id, 
                 "question_id": ans.question_id,
                 "answer_text": ans.answer_text,
                 "marked_for_review": ans.marked_for_review,
                 "status": ans.status,
+                "question_type": ans.question_type,
+                "marks_allotted": ans.marks_allotted,
+                "evaluated": bool(ans.evaluated),
+                "is_correct": bool(ans.marks_allotted > 0) if ans.evaluated else None,
             })
+
         return Response(data, status=200)
+
 
 
 class ProctoringLogListCreateView(generics.ListCreateAPIView):
