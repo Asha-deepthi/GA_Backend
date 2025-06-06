@@ -79,3 +79,9 @@ class Option(models.Model):
 
     def __str__(self):
         return f"Option Q{self.question.id}: {self.text[:30]}"
+
+#class SectionTimer(models.Model):
+#   session_id = models.IntegerField()
+#   section_id = models.IntegerField()
+#   remaining_time = models.IntegerField()
+#   updated_at = models.DateTimeField(auto_now=True)

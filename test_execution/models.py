@@ -48,16 +48,22 @@ class TestSession(models.Model):
 class Answer(models.Model):
     # Temporarily using IntegerFields instead of ForeignKeys
     session_id = models.IntegerField(null=True, blank=True)  # Temporary substitute for ForeignKey to TestSession
+    section_id = models.IntegerField(null=True, blank=True)
     question_id = models.IntegerField(null=True, blank=True)  # Temporary substitute for ForeignKey to Question
-    question_type=models.CharField(max_length=50, null=True, blank=True)
+    question_type = models.CharField(max_length=50, null=True, blank=True)
+    status = models.CharField(max_length=20, null=True, blank=True)
 
     # Supports all types
     answer_text = models.TextField(null=True, blank=True)
     audio_file = models.FileField(upload_to='audio_answers/', null=True, blank=True)
     video_file = models.FileField(upload_to='video_answers/', null=True, blank=True)
 
-    # New field
+    # New fields
     marked_for_review = models.BooleanField(default=False)
+    
+    #NEW FIELDS FOR MARKS
+    marks_allotted = models.FloatField(default=0)
+    evaluated = models.BooleanField(default=False)  # True if auto-evaluated or manually evaluated
 
     submitted_at = models.DateTimeField(auto_now_add=True)
 
@@ -77,6 +83,7 @@ class ProctoringLog(models.Model):
         ('multiple_people', 'Multiple People'),
         ('tab_switch', 'Tab Switch'),
         ('fullscreen_exit', 'Fullscreen Exit'),
+        ('WindowBlur', 'Window Blur'),
     ]
 
     session_id = models.IntegerField(null=True, blank=True)  # Temporary substitute for ForeignKey to TestSession
@@ -132,3 +139,11 @@ class DemoAudioResponse(models.Model):
 
     def __str__(self):
         return f"DemoAudioResponse by {self.user.username} at {self.uploaded_at}"
+
+class ProctoringScreenshot(models.Model):
+    session = models.IntegerField()
+    screenshot = models.ImageField(upload_to='proctoring_screenshots/')
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Screenshot for session {self.session} at {self.timestamp}"
