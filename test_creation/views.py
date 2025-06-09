@@ -13,6 +13,7 @@ import random
 from .models import SectionTimer
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from test_execution.models import Answer
 
 # Test Views (already created)
 class CreateTestView(generics.CreateAPIView):
@@ -36,7 +37,9 @@ class TestDetailView(generics.RetrieveAPIView):
     queryset = Test.objects.all()
     serializer_class = TestSerializer
     permission_classes = [permissions.IsAuthenticated]
-    lookup_field = 'test_id'
+    #lookup_field = 'test_id'
+    lookup_field = 'id'            # model field used to get instance
+    lookup_url_kwarg = 'test_id'   # URL kwarg to match
 
 
 # Section Views
@@ -45,6 +48,8 @@ class CreateSectionView(generics.CreateAPIView):
     serializer_class = SectionSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
 
 class ListSectionsByTestView(generics.ListAPIView):
     serializer_class = SectionSerializer
@@ -52,14 +57,16 @@ class ListSectionsByTestView(generics.ListAPIView):
 
     def get_queryset(self):
         test_id = self.kwargs['test_id']
-        return Section.objects.filter(test__test_id=test_id)
+        return Section.objects.filter(test__id=test_id)
 
 
 class SectionDetailView(generics.RetrieveAPIView):
     queryset = Section.objects.all()
     serializer_class = SectionSerializer
     permission_classes = [permissions.IsAuthenticated]
-    lookup_field = 'section_id'
+    #lookup_field = 'section_id'
+    lookup_field = 'id'
+    lookup_url_kwarg = 'section_id'
 
 
 # Question Views
@@ -68,6 +75,9 @@ class CreateQuestionView(generics.CreateAPIView):
     serializer_class = QuestionSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
 
 class ListQuestionsBySectionView(generics.ListAPIView):
     serializer_class = QuestionSerializer
@@ -75,14 +85,16 @@ class ListQuestionsBySectionView(generics.ListAPIView):
 
     def get_queryset(self):
         section_id = self.kwargs['section_id']
-        return Question.objects.filter(section__section_id=section_id)
+        return Question.objects.filter(section__id=section_id)
 
 
 class QuestionDetailView(generics.RetrieveAPIView):
     queryset = Question.objects.all()
     serializer_class = QuestionSerializer
     permission_classes = [permissions.IsAuthenticated]
-    lookup_field = 'question_id'
+    #lookup_field = 'question_id'
+    lookup_field = 'id'
+    lookup_url_kwarg = 'question_id'
 
 
 # Option Views
@@ -98,58 +110,68 @@ class ListOptionsByQuestionView(generics.ListAPIView):
 
     def get_queryset(self):
         question_id = self.kwargs['question_id']
-        return Option.objects.filter(question__question_id=question_id)
+        return Option.objects.filter(question__id=question_id)
 
 
 class OptionDetailView(generics.RetrieveAPIView):
     queryset = Option.objects.all()
     serializer_class = OptionSerializer
     permission_classes = [permissions.IsAuthenticated]
-    lookup_field = 'option_id'
+    #lookup_field = 'option_id'
     lookup_field = 'id'
+    lookup_url_kwarg = 'option_id'
+
 
 def fetch_section_questions(request, section_id):
-    print("Request GET params:", request.GET)  # add this line to console log
-    # Get session_id from query parameters
+    print("Request GET params:", request.GET)
     session_id = request.GET.get('session_id')
     if not session_id:
         return JsonResponse({'error': 'Session ID is required as a query parameter'}, status=400)
 
-    # Create a cache key using section_id and session_id
     cache_key = f"json_qns_s{section_id}_sess{session_id}"
     cached_data = cache.get(cache_key)
-
     if cached_data:
         return JsonResponse(cached_data, safe=False)
 
-    # Load JSON data
     try:
         with open(settings.BASE_DIR / 'test_creation' / 'test_questions.json') as f:
             data = json.load(f)
     except FileNotFoundError:
         return JsonResponse({'error': 'Question file not found'}, status=500)
 
-    # Find the section with the matching ID
     section_data = next((sec for sec in data if sec.get("section_id") == section_id), None)
-
     if not section_data:
         return JsonResponse({'error': 'Section not found'}, status=404)
 
     questions = section_data.get("questions", [])
 
-    # Shuffle questions and their options
+    # Shuffle questions and options
     random.shuffle(questions)
     for question in questions:
         if "options" in question:
             random.shuffle(question["options"])
 
-    # Prepare response data
+    # Fetch existing answers for this session and section from DB
+    answers = Answer.objects.filter(session_id=session_id, section_id=section_id)
+    answer_map = {str(ans.question_id): ans for ans in answers}
+
+    # Attach answer details to each question if present
+    for question in questions:
+        qid = str(question.get('question_id'))
+        ans = answer_map.get(qid)
+        if ans:
+            question['answer_id'] = ans.id
+            question['marks_allotted'] = ans.marks_allotted
+            question['answer_text'] = ans.answer_text
+            question['evaluated'] = ans.evaluated
+            question['marked_for_review'] = ans.marked_for_review
+            # Attach any other answer fields you want frontend to have
+
     response_data = {
         "section_type": section_data.get("section_type", "unknown"),
-        "questions": questions
+        "questions": questions,
     }
 
-    # Cache the result for 1 hour
     cache.set(cache_key, response_data, timeout=60 * 60)
 
     return JsonResponse(response_data, safe=False)

@@ -10,6 +10,7 @@ from .serializers import *
 from django.conf import settings
 import json
 
+
 class BasicDetailsCreateView(generics.CreateAPIView):
     queryset = BasicDetails.objects.all()
     serializer_class = BasicDetailsSerializer
@@ -176,9 +177,9 @@ class AnswerSubmissionView(APIView):
             "evaluated": evaluated
         }, status=201)
 
-
 class ManualAnswerEvaluationView(APIView):
     def post(self, request):
+        print("ManualAnswerEvaluationView called with:", request.data)
         answer_id = request.data.get('answer_id')
         marks = request.data.get('marks')
 
@@ -203,24 +204,46 @@ class AnswerListView(APIView):
             return Response({"error": "session_id and section_id are required."}, status=400)
 
         answers = Answer.objects.filter(session_id=session_id, section_id=section_id)
+
+        # Load question data from test_questions.json
+        try:
+            with open(settings.BASE_DIR / 'test_creation' / 'test_questions.json') as f:
+                all_sections = json.load(f)
+        except Exception as e:
+            print("Error loading questions JSON:", e)
+            return Response({"error": "Failed to load questions JSON."}, status=500)
+
+        # Create a lookup for question_id -> question text
+        question_lookup = {}
+        for section in all_sections:
+            for q in section.get('questions', []):
+                question_lookup[str(q['question_id'])] = q['question']
+
         data = []
 
         for ans in answers:
+            print(f"[DEBUG] Fetched Answer ID: {ans.id} for Q{ans.question_id}")
             data.append({
-                "answer_id": ans.id, 
+                "answer_id": ans.id if ans.id else None,
                 "question_id": ans.question_id,
-                "answer_text": ans.answer_text,
-                "marked_for_review": ans.marked_for_review,
-                "status": ans.status,
+                "question": question_lookup.get(str(ans.question_id), "Unknown question"),
                 "question_type": ans.question_type,
+                "section_id": ans.section_id,
+                "answer": get_answer_json(ans),  # You'll define this helper below
                 "marks_allotted": ans.marks_allotted,
                 "evaluated": bool(ans.evaluated),
-                "is_correct": bool(ans.marks_allotted > 0) if ans.evaluated else None,
             })
 
         return Response(data, status=200)
 
-
+# Add this helper to cleanly prepare the answer JSON
+def get_answer_json(ans):
+    if ans.question_type == 'audio':
+        return {"audioUrl": ans.audio_file.url if ans.audio_file else None}
+    elif ans.question_type == 'video':
+        return {"videoUrl": ans.video_file.url if ans.video_file else None}
+    else:
+        return {"text": ans.answer_text}
 
 class ProctoringLogListCreateView(generics.ListCreateAPIView):
     queryset = ProctoringLog.objects.all()

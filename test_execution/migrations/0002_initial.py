@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('test_execution', '0001_initial'),
-        ('test_creation', '0002_initial'),
+        #('test_creation', '0001_initial'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
@@ -21,11 +21,11 @@ class Migration(migrations.Migration):
             name='candidate',
             field=models.ForeignKey(limit_choices_to={'role': 'candidate'}, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL),
         ),
-        migrations.AddField(
-            model_name='testsession',
-            name='test',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='test_creation.test'),
-        ),
+        #migrations.AddField(
+            #model_name='testsession',
+            #name='test',
+            #field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='test_creation.test'),
+       # ),
         migrations.AddField(
             model_name='proctoringlog',
             name='session',
