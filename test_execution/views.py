@@ -31,64 +31,6 @@ class TestSessionDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = TestSession.objects.all()
     serializer_class = TestSessionSerializer
 
-#class AnswerSubmissionView(APIView):
-#    parser_classes = (MultiPartParser, FormParser)
-#
-#    def post(self, request, *args, **kwargs):
-#       session_id = request.data.get('session_id')
-#        section_id = request.data.get('section_id')
-#        question_id = request.data.get('question_id')
-#        question_type = request.data.get('question_type')  # Corrected name
-#        answer_text = request.data.get('answer_text')
-#        marked_for_review = request.data.get('marked_for_review', 'false').lower() == 'true'
-#        status = request.data.get('status') or 'unanswered'
-#
-#        if not all([session_id, section_id, question_id, question_type]):
-#            return Response({"error": "Missing required fields."}, status=400)
-#
-#        #Auto-evaluate logic
-#        marks_allotted = 0
-#        evaluated = False
-#
-#        try:
-#            question = Question.objects.get(id=question_id)
-#        except Question.DoesNotExist:
-#            return Response({"error": "Question not found"}, status=404)
-#
-#        if question_type.lower() in ['mcq', 'fill_in_the_blank', 'integer']:
-#            correct = str(question.correct_answer).strip().lower()
-#            submitted = str(answer_text).strip().lower()
-#            if correct == submitted:
-#                marks_allotted = question.marks
-#            evaluated = True
-#        else:
-#            # Subjective, Audio, Video — manual evaluation later
-#            marks_allotted = 0
-#            evaluated = False
-#
-#        #Save answer
-#        answer, created = Answer.objects.update_or_create(
-#            session_id=session_id,
-#            question_id=question_id,
-#            defaults={
-#                'section_id': section_id,
-#                'question_type': question_type,
-#                'answer_text': answer_text,
-#                'marked_for_review': marked_for_review,
-#                'status': status,
-#                'audio_file': request.FILES.get('audio_file'),
-#                'video_file': request.FILES.get('video_file'),
-#                'marks_allotted': marks_allotted,
-#                'evaluated': evaluated,
-#            }
-#        )
-#
-#        return Response({
-#            "message": "Answer saved successfully",
-#            "marks_allotted": marks_allotted,
-#            "evaluated": evaluated
-#        }, status=201)
-
 class AnswerSubmissionView(APIView):
     parser_classes = (MultiPartParser, FormParser)
 
@@ -103,57 +45,31 @@ class AnswerSubmissionView(APIView):
         marked_for_review = request.data.get('marked_for_review', 'false').lower() == 'true'
         status = request.data.get('status') or 'unanswered'
 
-        # Validate required fields
         if not all([session_id, section_id, question_id, question_type]):
             return Response({"error": "Missing required fields."}, status=400)
 
-        # Load JSON questions from file
+        # Fetch from DB
         try:
-            with open(settings.BASE_DIR / 'test_creation' / 'test_questions.json') as f:
-                questions_data = json.load(f)
-        except Exception as e:
-            print("Error loading questions JSON:", e)
-            return Response({"error": "Failed to load questions JSON."}, status=500)
+            question = Question.objects.get(id=question_id)
+            section = Section.objects.get(id=section_id)
+        except Question.DoesNotExist:
+            return Response({"error": "Question not found"}, status=404)
+        except Section.DoesNotExist:
+            return Response({"error": "Section not found"}, status=404)
 
-        # Find question and its section by ID inside nested sections -> questions list
-        question = None
-        section = None
-        for sec in questions_data:
-            for q in sec.get('questions', []):
-                if str(q.get('question_id')) == str(question_id):
-                    question = q
-                    section = sec  # Save section reference here
-                    break
-            if question:
-                break
-
-        if not question:
-            print("Question not found in JSON.")
-            return Response({"error": "Question not found in JSON."}, status=404)
-
+        # Auto-evaluation logic
         marks_allotted = 0
         evaluated = False
 
-        # List of question types that can be auto-evaluated
         auto_eval_types = ['multiple_choice', 'fill_in_the_blank', 'integer']
 
-        # Auto-evaluate if applicable
         if question_type.lower() in auto_eval_types:
-            correct = str(question.get('correct_answer', '')).strip().lower()
+            correct = str(question.correct_answer).strip().lower() if question.correct_answer else ''
             submitted = str(answer_text).strip().lower() if answer_text else ''
-            print(f"[DEBUG] correct_answer: '{correct}', submitted_answer: '{submitted}'")
             if correct == submitted:
-                marks_allotted = section.get('marks', 0)  # Use marks of the section
-                print(f"[DEBUG] Marks allotted: {marks_allotted}")
-            else:
-                print("[DEBUG] Answer incorrect or empty")
+                marks_allotted = section.marks_per_question or 0
             evaluated = True
-        else:
-            # subjective, audio, video — manual evaluation later
-            marks_allotted = 0
-            evaluated = False
 
-        # Save or update answer in DB
         answer, created = Answer.objects.update_or_create(
             session_id=session_id,
             question_id=question_id,
@@ -170,12 +86,12 @@ class AnswerSubmissionView(APIView):
             }
         )
 
-        print("Returning success response")
         return Response({
             "message": "Answer saved successfully",
             "marks_allotted": marks_allotted,
             "evaluated": evaluated
         }, status=201)
+
 
 class ManualAnswerEvaluationView(APIView):
     def post(self, request):
@@ -195,6 +111,7 @@ class ManualAnswerEvaluationView(APIView):
         except Answer.DoesNotExist:
             return Response({'error': 'Answer not found'}, status=404)
 
+
 class AnswerListView(APIView):
     def get(self, request):
         session_id = request.GET.get('session_id')
@@ -205,38 +122,28 @@ class AnswerListView(APIView):
 
         answers = Answer.objects.filter(session_id=session_id, section_id=section_id)
 
-        # Load question data from test_questions.json
-        try:
-            with open(settings.BASE_DIR / 'test_creation' / 'test_questions.json') as f:
-                all_sections = json.load(f)
-        except Exception as e:
-            print("Error loading questions JSON:", e)
-            return Response({"error": "Failed to load questions JSON."}, status=500)
-
-        # Create a lookup for question_id -> question text
-        question_lookup = {}
-        for section in all_sections:
-            for q in section.get('questions', []):
-                question_lookup[str(q['question_id'])] = q['question']
+        # Prepare question lookup from DB instead of JSON
+        questions = Question.objects.filter(section_id=section_id)
+        question_lookup = {str(q.id): q.text for q in questions}
 
         data = []
-
         for ans in answers:
             print(f"[DEBUG] Fetched Answer ID: {ans.id} for Q{ans.question_id}")
             data.append({
-                "answer_id": ans.id if ans.id else None,
+                "answer_id": ans.id,
                 "question_id": ans.question_id,
                 "question": question_lookup.get(str(ans.question_id), "Unknown question"),
                 "question_type": ans.question_type,
                 "section_id": ans.section_id,
-                "answer": get_answer_json(ans),  # You'll define this helper below
+                "answer": get_answer_json(ans),
                 "marks_allotted": ans.marks_allotted,
                 "evaluated": bool(ans.evaluated),
             })
 
         return Response(data, status=200)
 
-# Add this helper to cleanly prepare the answer JSON
+
+# Utility function
 def get_answer_json(ans):
     if ans.question_type == 'audio':
         return {"audioUrl": ans.audio_file.url if ans.audio_file else None}
