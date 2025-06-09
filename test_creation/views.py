@@ -1,9 +1,9 @@
 # test_creation/views.py
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny
 from rest_framework import generics, permissions
 from rest_framework.views import APIView , View
 from rest_framework.response import Response
-from .models import Test, Section, Question, Option
+from .models import Test, Section, Question, Option, SectionTimer
 from .serializers import TestSerializer, SectionSerializer, QuestionSerializer, OptionSerializer
 import json
 from django.http import JsonResponse
@@ -73,7 +73,7 @@ class SectionDetailView(generics.RetrieveAPIView):
 class CreateQuestionView(generics.CreateAPIView):
     queryset = Question.objects.all()
     serializer_class = QuestionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
@@ -81,7 +81,7 @@ class CreateQuestionView(generics.CreateAPIView):
 
 class ListQuestionsBySectionView(generics.ListAPIView):
     serializer_class = QuestionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get_queryset(self):
         section_id = self.kwargs['section_id']
@@ -91,7 +91,7 @@ class ListQuestionsBySectionView(generics.ListAPIView):
 class QuestionDetailView(generics.RetrieveAPIView):
     queryset = Question.objects.all()
     serializer_class = QuestionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [AllowAny]
     #lookup_field = 'question_id'
     lookup_field = 'id'
     lookup_url_kwarg = 'question_id'
@@ -101,12 +101,12 @@ class QuestionDetailView(generics.RetrieveAPIView):
 class CreateOptionView(generics.CreateAPIView):
     queryset = Option.objects.all()
     serializer_class = OptionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [AllowAny]
 
 
 class ListOptionsByQuestionView(generics.ListAPIView):
     serializer_class = OptionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get_queryset(self):
         question_id = self.kwargs['question_id']
@@ -116,65 +116,10 @@ class ListOptionsByQuestionView(generics.ListAPIView):
 class OptionDetailView(generics.RetrieveAPIView):
     queryset = Option.objects.all()
     serializer_class = OptionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [AllowAny]
     #lookup_field = 'option_id'
     lookup_field = 'id'
     lookup_url_kwarg = 'option_id'
-
-
-def fetch_section_questions(request, section_id):
-    print("Request GET params:", request.GET)
-    session_id = request.GET.get('session_id')
-    if not session_id:
-        return JsonResponse({'error': 'Session ID is required as a query parameter'}, status=400)
-
-    cache_key = f"json_qns_s{section_id}_sess{session_id}"
-    cached_data = cache.get(cache_key)
-    if cached_data:
-        return JsonResponse(cached_data, safe=False)
-
-    try:
-        with open(settings.BASE_DIR / 'test_creation' / 'test_questions.json') as f:
-            data = json.load(f)
-    except FileNotFoundError:
-        return JsonResponse({'error': 'Question file not found'}, status=500)
-
-    section_data = next((sec for sec in data if sec.get("section_id") == section_id), None)
-    if not section_data:
-        return JsonResponse({'error': 'Section not found'}, status=404)
-
-    questions = section_data.get("questions", [])
-
-    # Shuffle questions and options
-    random.shuffle(questions)
-    for question in questions:
-        if "options" in question:
-            random.shuffle(question["options"])
-
-    # Fetch existing answers for this session and section from DB
-    answers = Answer.objects.filter(session_id=session_id, section_id=section_id)
-    answer_map = {str(ans.question_id): ans for ans in answers}
-
-    # Attach answer details to each question if present
-    for question in questions:
-        qid = str(question.get('question_id'))
-        ans = answer_map.get(qid)
-        if ans:
-            question['answer_id'] = ans.id
-            question['marks_allotted'] = ans.marks_allotted
-            question['answer_text'] = ans.answer_text
-            question['evaluated'] = ans.evaluated
-            question['marked_for_review'] = ans.marked_for_review
-            # Attach any other answer fields you want frontend to have
-
-    response_data = {
-        "section_type": section_data.get("section_type", "unknown"),
-        "questions": questions,
-    }
-
-    cache.set(cache_key, response_data, timeout=60 * 60)
-
-    return JsonResponse(response_data, safe=False)
 
 class GetTimerView(View):
     def get(self, request):
