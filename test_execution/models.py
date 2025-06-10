@@ -84,6 +84,8 @@ class ProctoringLog(models.Model):
         ('tab_switch', 'Tab Switch'),
         ('fullscreen_exit', 'Fullscreen Exit'),
         ('WindowBlur', 'Window Blur'),
+        ('low_audio', 'Low Audio'),                 
+        ('camera_off', 'Camera Off'),
     ]
 
     session_id = models.IntegerField(null=True, blank=True)  # Temporary substitute for ForeignKey to TestSession
