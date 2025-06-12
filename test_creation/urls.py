@@ -6,7 +6,8 @@ from .views import (
     CreateTestView, ListTestView, TestDetailView,
     CreateSectionView, ListSectionsByTestView, SectionDetailView,
     CreateQuestionView, ListQuestionsBySectionView, QuestionDetailView,
-    CreateOptionView, ListOptionsByQuestionView, OptionDetailView, fetch_section_questions, GetTimerView, SaveTimerView,
+    CreateOptionView, ListOptionsByQuestionView, OptionDetailView,AssignTestToCandidateView,
+    FullTestCreateView,CreateCandidateUserView,fetch_section_questions,SendInvitationsView,ListAssignedCandidatesView,
 )
 
 urlpatterns = [
@@ -33,7 +34,14 @@ urlpatterns = [
 
     path('fetch-section-questions/<int:section_id>/', fetch_section_questions),
 
-    path('get-timer/', GetTimerView.as_view(), name='get_timer'),
+    #path('get-timer/', GetTimerView.as_view(), name='get_timer'),
 
-    path('save-timer/', SaveTimerView.as_view(), name='save_timer'),
+    #path('save-timer/', SaveTimerView.as_view(), name='save_timer'),
+
+    path('assign-test/', AssignTestToCandidateView.as_view(), name='assign-test'),
+    path('tests/full-create/', FullTestCreateView.as_view(), name='full-test-create'),
+    path('create-candidate/', CreateCandidateUserView.as_view(), name='create-candidate'),
+    path('tests/<int:test_id>/assigned-candidates/', ListAssignedCandidatesView.as_view(), name='list-assigned-candidates'),
+    path('send-invitations/', SendInvitationsView.as_view(), name='send-invitations'),
+
 ]

@@ -1,5 +1,8 @@
 from rest_framework import serializers
 from .models import Test, Section, Question, Option
+from .models import Candidate_Test
+from users.models import Candidate
+
 
 class OptionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -34,3 +37,35 @@ class TestSerializer(serializers.ModelSerializer):
         model = Test
         fields = '__all__'
         read_only_fields = ('created_by',)
+
+#class TestAssignmentSerializer(serializers.ModelSerializer):
+    # For a richer response, we can show details from the linked models
+ #   candidate_name = serializers.CharField(source='candidate.name', read_only=True)
+ #   test_title = serializers.CharField(source='test.title', read_only=True)
+
+ #   class Meta:
+ #       model = Candidate_Test
+ #       # We only need the IDs to create the link, but we'll return more details
+ #       fields = ['id', 'candidate', 'test', 'status', 'candidate_name', 'test_title']
+ #       read_only_fields = ['id', 'status', 'candidate_name', 'test_title']
+# --- NEW: A small serializer just for showing candidate details ---
+
+class NestedCandidateSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(source='user.email', read_only=True)
+
+    class Meta:
+        model = Candidate
+        fields = ['name', 'email']
+
+
+# --- THIS IS THE CORRECTED ASSIGNMENT SERIALIZER ---
+class TestAssignmentSerializer(serializers.ModelSerializer):
+    # This now uses our new nested serializer to show full candidate details
+    candidate = NestedCandidateSerializer(read_only=True)
+    test_title = serializers.CharField(source='test.title', read_only=True)
+
+    class Meta:
+        model = Candidate_Test
+        # We define the fields we want in our final API response
+        fields = ['id', 'candidate', 'test', 'status', 'test_title']
+        read_only_fields = fields # Make all fields read-only for the list view

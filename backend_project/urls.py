@@ -24,19 +24,20 @@ Including another URLconf
  #  path('api/test-creation/', include('test_creation.urls')),
  #   path('api/', include('test_creation.accounts.urls')),  # include account endpoints
 
+#backend/backend_project/urls.py
 from django.urls import path , include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from users.views import SendVerificationEmailView
+#from users.views import SendVerificationEmailView
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('users.urls')),
-    path('api/test-creation/', include('test_creation.urls')),
-    path('test-execution/', include('test_execution.urls')),
-    path('api/signup/', SendVerificationEmailView.as_view(), name='signup')
+    path('api/test_creation/', include('test_creation.urls')),
+    path('api/test-execution/', include('test_execution.urls')),
+    #path('api/signup/', SendVerificationEmailView.as_view(), name='signup')
 ]
 
 if settings.DEBUG:
