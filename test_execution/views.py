@@ -40,13 +40,11 @@ class AnswerSubmissionView(APIView):
         session_id = request.data.get('session_id')
         section_id = request.data.get('section_id')
         question_id = request.data.get('question_id')
-        question_type = request.data.get('question_type')
         answer_text = request.data.get('answer_text')
         marked_for_review = request.data.get('marked_for_review', 'false').lower() == 'true'
         status = request.data.get('status') or 'unanswered'
 
-        if not all([session_id, section_id, question_id, question_type]):
-            return Response({"error": "Missing required fields."}, status=400)
+        
 
         # Fetch from DB
         try:
@@ -56,20 +54,29 @@ class AnswerSubmissionView(APIView):
             return Response({"error": "Question not found"}, status=404)
         except Section.DoesNotExist:
             return Response({"error": "Section not found"}, status=404)
+        
+        question_type = request.data.get('question_type')
+        if not question_type or question_type == "undefined":
+          question_type = question.type
 
         # Auto-evaluation logic
         marks_allotted = 0
         evaluated = False
 
-        auto_eval_types = ['multiple_choice', 'fill_in_the_blank', 'integer']
+        auto_eval_types = ['multiple-choice', 'fill-in-blanks', 'integer']
 
         if question_type.lower() in auto_eval_types:
-            correct = str(question.correct_answer).strip().lower() if question.correct_answer else ''
             submitted = str(answer_text).strip().lower() if answer_text else ''
-            if correct == submitted:
+            correct_answers = question.correct_answers or []
+
+            # Normalize correct answers
+            correct_answers = [str(ans).strip().lower() for ans in correct_answers]
+
+            if submitted in correct_answers:
                 marks_allotted = section.marks_per_question or 0
             evaluated = True
 
+        # Save or update the answer
         answer, created = Answer.objects.update_or_create(
             session_id=session_id,
             question_id=question_id,
@@ -89,9 +96,9 @@ class AnswerSubmissionView(APIView):
         return Response({
             "message": "Answer saved successfully",
             "marks_allotted": marks_allotted,
-            "evaluated": evaluated
+            "evaluated": evaluated,
+            "question_type": question.type  #  Include this explicitly for frontend
         }, status=201)
-
 
 class ManualAnswerEvaluationView(APIView):
     def post(self, request):
@@ -122,18 +129,23 @@ class AnswerListView(APIView):
 
         answers = Answer.objects.filter(session_id=session_id, section_id=section_id)
 
-        # Prepare question lookup from DB instead of JSON
+        # Fetch related questions once
         questions = Question.objects.filter(section_id=section_id)
-        question_lookup = {str(q.id): q.text for q in questions}
+        question_lookup = {str(q.id): q for q in questions}
 
         data = []
         for ans in answers:
-            print(f"[DEBUG] Fetched Answer ID: {ans.id} for Q{ans.question_id}")
+            question = question_lookup.get(str(ans.question_id))
+            question_text = question.text if question else "Unknown question"
+            question_type = question.type if question else ans.question_type or "unknown"
+
+            print(f"[DEBUG] Answer ID: {ans.id}, QID: {ans.question_id}, Type: {question_type}")
+
             data.append({
                 "answer_id": ans.id,
                 "question_id": ans.question_id,
-                "question": question_lookup.get(str(ans.question_id), "Unknown question"),
-                "question_type": ans.question_type,
+                "question": question_text,
+                "question_type": question_type,  # ✅ use from Question model
                 "section_id": ans.section_id,
                 "answer": get_answer_json(ans),
                 "marks_allotted": ans.marks_allotted,
