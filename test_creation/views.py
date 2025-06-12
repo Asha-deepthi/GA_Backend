@@ -68,6 +68,10 @@ class SectionDetailView(generics.RetrieveAPIView):
     lookup_field = 'id'
     lookup_url_kwarg = 'section_id'
 
+class AllSectionsListView(generics.ListAPIView):
+    queryset = Section.objects.all()
+    serializer_class = SectionSerializer
+    permission_classes = [AllowAny]
 
 # Question Views
 class CreateQuestionView(generics.CreateAPIView):
@@ -123,8 +127,9 @@ class OptionDetailView(generics.RetrieveAPIView):
 
 class GetTimerView(View):
     def get(self, request):
-        session_id = request.GET.get('session_id')
-        section_id = request.GET.get('section_id')
+        session_id = int(request.GET.get('session_id'))
+        section_id = int(request.GET.get('section_id'))
+
 
         if not all([session_id, section_id]):
             return JsonResponse({'error': 'Missing parameters'}, status=400)
@@ -133,7 +138,13 @@ class GetTimerView(View):
             timer = SectionTimer.objects.get(session_id=session_id, section_id=section_id)
             return JsonResponse({'remaining_time': timer.remaining_time})
         except SectionTimer.DoesNotExist:
-            return JsonResponse({'remaining_time': None})
+            try:
+                # Fetch default from Section model
+                section = Section.objects.get(id=section_id)
+                default_time = (section.time_limit or 60) * 60  # default to 60 mins if null
+                return JsonResponse({'remaining_time': default_time})
+            except Section.DoesNotExist:
+                return JsonResponse({'error': 'Section not found'}, status=404)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class SaveTimerView(View):
