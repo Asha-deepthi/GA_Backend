@@ -68,6 +68,10 @@ class SectionDetailView(generics.RetrieveAPIView):
     lookup_field = 'id'
     lookup_url_kwarg = 'section_id'
 
+class AllSectionsListView(generics.ListAPIView):
+    queryset = Section.objects.all()
+    serializer_class = SectionSerializer
+    permission_classes = [AllowAny]
 
 # Question Views
 class CreateQuestionView(generics.CreateAPIView):

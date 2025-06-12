@@ -6,7 +6,7 @@ from .views import (
     CreateTestView, ListTestView, TestDetailView,
     CreateSectionView, ListSectionsByTestView, SectionDetailView,
     CreateQuestionView, ListQuestionsBySectionView, QuestionDetailView,
-    CreateOptionView, ListOptionsByQuestionView, OptionDetailView, GetTimerView, SaveTimerView,
+    CreateOptionView, ListOptionsByQuestionView, OptionDetailView, GetTimerView, SaveTimerView, AllSectionsListView,
 )
 
 urlpatterns = [
@@ -20,6 +20,7 @@ urlpatterns = [
     path('sections/create/', CreateSectionView.as_view(), name='create-section'),
     path('tests/<int:test_id>/sections/', ListSectionsByTestView.as_view(), name='list-sections'),
     path('sections/<int:section_id>/', SectionDetailView.as_view(), name='section-detail'),
+    path('sections/', AllSectionsListView.as_view(), name='all-sections'),
 
 # Question
     path('questions/create/', CreateQuestionView.as_view(), name='create-question'),
