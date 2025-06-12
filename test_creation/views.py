@@ -53,7 +53,7 @@ class CreateSectionView(generics.CreateAPIView):
 
 class ListSectionsByTestView(generics.ListAPIView):
     serializer_class = SectionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get_queryset(self):
         test_id = self.kwargs['test_id']
