@@ -10,6 +10,7 @@ from .serializers import *
 from django.conf import settings
 import json
 
+
 class BasicDetailsCreateView(generics.CreateAPIView):
     queryset = BasicDetails.objects.all()
     serializer_class = BasicDetailsSerializer
@@ -30,64 +31,6 @@ class TestSessionDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = TestSession.objects.all()
     serializer_class = TestSessionSerializer
 
-#class AnswerSubmissionView(APIView):
-#    parser_classes = (MultiPartParser, FormParser)
-#
-#    def post(self, request, *args, **kwargs):
-#       session_id = request.data.get('session_id')
-#        section_id = request.data.get('section_id')
-#        question_id = request.data.get('question_id')
-#        question_type = request.data.get('question_type')  # Corrected name
-#        answer_text = request.data.get('answer_text')
-#        marked_for_review = request.data.get('marked_for_review', 'false').lower() == 'true'
-#        status = request.data.get('status') or 'unanswered'
-#
-#        if not all([session_id, section_id, question_id, question_type]):
-#            return Response({"error": "Missing required fields."}, status=400)
-#
-#        #Auto-evaluate logic
-#        marks_allotted = 0
-#        evaluated = False
-#
-#        try:
-#            question = Question.objects.get(id=question_id)
-#        except Question.DoesNotExist:
-#            return Response({"error": "Question not found"}, status=404)
-#
-#        if question_type.lower() in ['mcq', 'fill_in_the_blank', 'integer']:
-#            correct = str(question.correct_answer).strip().lower()
-#            submitted = str(answer_text).strip().lower()
-#            if correct == submitted:
-#                marks_allotted = question.marks
-#            evaluated = True
-#        else:
-#            # Subjective, Audio, Video — manual evaluation later
-#            marks_allotted = 0
-#            evaluated = False
-#
-#        #Save answer
-#        answer, created = Answer.objects.update_or_create(
-#            session_id=session_id,
-#            question_id=question_id,
-#            defaults={
-#                'section_id': section_id,
-#                'question_type': question_type,
-#                'answer_text': answer_text,
-#                'marked_for_review': marked_for_review,
-#                'status': status,
-#                'audio_file': request.FILES.get('audio_file'),
-#                'video_file': request.FILES.get('video_file'),
-#                'marks_allotted': marks_allotted,
-#                'evaluated': evaluated,
-#            }
-#        )
-#
-#        return Response({
-#            "message": "Answer saved successfully",
-#            "marks_allotted": marks_allotted,
-#            "evaluated": evaluated
-#        }, status=201)
-
 class AnswerSubmissionView(APIView):
     parser_classes = (MultiPartParser, FormParser)
 
@@ -97,62 +40,43 @@ class AnswerSubmissionView(APIView):
         session_id = request.data.get('session_id')
         section_id = request.data.get('section_id')
         question_id = request.data.get('question_id')
-        question_type = request.data.get('question_type')
         answer_text = request.data.get('answer_text')
         marked_for_review = request.data.get('marked_for_review', 'false').lower() == 'true'
         status = request.data.get('status') or 'unanswered'
 
-        # Validate required fields
-        if not all([session_id, section_id, question_id, question_type]):
-            return Response({"error": "Missing required fields."}, status=400)
+        
 
-        # Load JSON questions from file
+        # Fetch from DB
         try:
-            with open(settings.BASE_DIR / 'test_creation' / 'test_questions.json') as f:
-                questions_data = json.load(f)
-        except Exception as e:
-            print("Error loading questions JSON:", e)
-            return Response({"error": "Failed to load questions JSON."}, status=500)
+            question = Question.objects.get(id=question_id)
+            section = Section.objects.get(id=section_id)
+        except Question.DoesNotExist:
+            return Response({"error": "Question not found"}, status=404)
+        except Section.DoesNotExist:
+            return Response({"error": "Section not found"}, status=404)
+        
+        question_type = request.data.get('question_type')
+        if not question_type or question_type == "undefined":
+          question_type = question.type
 
-        # Find question and its section by ID inside nested sections -> questions list
-        question = None
-        section = None
-        for sec in questions_data:
-            for q in sec.get('questions', []):
-                if str(q.get('question_id')) == str(question_id):
-                    question = q
-                    section = sec  # Save section reference here
-                    break
-            if question:
-                break
-
-        if not question:
-            print("Question not found in JSON.")
-            return Response({"error": "Question not found in JSON."}, status=404)
-
+        # Auto-evaluation logic
         marks_allotted = 0
         evaluated = False
 
-        # List of question types that can be auto-evaluated
-        auto_eval_types = ['multiple_choice', 'fill_in_the_blank', 'integer']
+        auto_eval_types = ['multiple-choice', 'fill-in-blanks', 'integer']
 
-        # Auto-evaluate if applicable
         if question_type.lower() in auto_eval_types:
-            correct = str(question.get('correct_answer', '')).strip().lower()
             submitted = str(answer_text).strip().lower() if answer_text else ''
-            print(f"[DEBUG] correct_answer: '{correct}', submitted_answer: '{submitted}'")
-            if correct == submitted:
-                marks_allotted = section.get('marks', 0)  # Use marks of the section
-                print(f"[DEBUG] Marks allotted: {marks_allotted}")
-            else:
-                print("[DEBUG] Answer incorrect or empty")
-            evaluated = True
-        else:
-            # subjective, audio, video — manual evaluation later
-            marks_allotted = 0
-            evaluated = False
+            correct_answers = question.correct_answers or []
 
-        # Save or update answer in DB
+            # Normalize correct answers
+            correct_answers = [str(ans).strip().lower() for ans in correct_answers]
+
+            if submitted in correct_answers:
+                marks_allotted = section.marks_per_question or 0
+            evaluated = True
+
+        # Save or update the answer
         answer, created = Answer.objects.update_or_create(
             session_id=session_id,
             question_id=question_id,
@@ -169,16 +93,16 @@ class AnswerSubmissionView(APIView):
             }
         )
 
-        print("Returning success response")
         return Response({
             "message": "Answer saved successfully",
             "marks_allotted": marks_allotted,
-            "evaluated": evaluated
+            "evaluated": evaluated,
+            "question_type": question.type  #  Include this explicitly for frontend
         }, status=201)
-
 
 class ManualAnswerEvaluationView(APIView):
     def post(self, request):
+        print("ManualAnswerEvaluationView called with:", request.data)
         answer_id = request.data.get('answer_id')
         marks = request.data.get('marks')
 
@@ -194,6 +118,7 @@ class ManualAnswerEvaluationView(APIView):
         except Answer.DoesNotExist:
             return Response({'error': 'Answer not found'}, status=404)
 
+
 class AnswerListView(APIView):
     def get(self, request):
         session_id = request.GET.get('session_id')
@@ -203,24 +128,41 @@ class AnswerListView(APIView):
             return Response({"error": "session_id and section_id are required."}, status=400)
 
         answers = Answer.objects.filter(session_id=session_id, section_id=section_id)
-        data = []
 
+        # Fetch related questions once
+        questions = Question.objects.filter(section_id=section_id)
+        question_lookup = {str(q.id): q for q in questions}
+
+        data = []
         for ans in answers:
+            question = question_lookup.get(str(ans.question_id))
+            question_text = question.text if question else "Unknown question"
+            question_type = question.type if question else ans.question_type or "unknown"
+
+            print(f"[DEBUG] Answer ID: {ans.id}, QID: {ans.question_id}, Type: {question_type}")
+
             data.append({
-                "answer_id": ans.id, 
+                "answer_id": ans.id,
                 "question_id": ans.question_id,
-                "answer_text": ans.answer_text,
-                "marked_for_review": ans.marked_for_review,
-                "status": ans.status,
-                "question_type": ans.question_type,
+                "question": question_text,
+                "question_type": question_type,  # ✅ use from Question model
+                "section_id": ans.section_id,
+                "answer": get_answer_json(ans),
                 "marks_allotted": ans.marks_allotted,
                 "evaluated": bool(ans.evaluated),
-                "is_correct": bool(ans.marks_allotted > 0) if ans.evaluated else None,
             })
 
         return Response(data, status=200)
 
 
+# Utility function
+def get_answer_json(ans):
+    if ans.question_type == 'audio':
+        return {"audioUrl": ans.audio_file.url if ans.audio_file else None}
+    elif ans.question_type == 'video':
+        return {"videoUrl": ans.video_file.url if ans.video_file else None}
+    else:
+        return {"text": ans.answer_text}
 
 class ProctoringLogListCreateView(generics.ListCreateAPIView):
     queryset = ProctoringLog.objects.all()

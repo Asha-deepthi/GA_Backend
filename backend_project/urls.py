@@ -35,7 +35,7 @@ from django.contrib import admin
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('users.urls')),
-    path('api/test_creation/', include('test_creation.urls')),
+    path('api/test-creation/', include('test_creation.urls')),
     path('api/test-execution/', include('test_execution.urls')),
     #path('api/signup/', SendVerificationEmailView.as_view(), name='signup')
 ]

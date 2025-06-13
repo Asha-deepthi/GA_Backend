@@ -1,10 +1,11 @@
 # test_creation/views.py
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny
 from rest_framework import generics, permissions
 from rest_framework.views import APIView , View
 from rest_framework.response import Response
 from .models import Test, Section, Question, Option
 from users.models import Candidate
+from .models import Test, Section, Question, Option, SectionTimer
 from .serializers import TestSerializer, SectionSerializer, QuestionSerializer, OptionSerializer
 import json
 from rest_framework import status
@@ -12,6 +13,7 @@ from django.http import JsonResponse
 from django.conf import settings
 from django.core.cache import cache
 import random
+from rest_framework.permissions import IsAuthenticated
 from django.core.mail import send_mail
 from django.utils import timezone
 #from .models import SectionTimer
@@ -24,8 +26,10 @@ from django.db import transaction
 import secrets
 import string
 from django.contrib.auth import get_user_model
+
 User = get_user_model()
 
+from test_execution.models import Answer
 
 # Test Views (already created)
 class CreateTestView(generics.CreateAPIView):
@@ -65,7 +69,7 @@ class CreateSectionView(generics.CreateAPIView):
 
 class ListSectionsByTestView(generics.ListAPIView):
     serializer_class = SectionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get_queryset(self):
         test_id = self.kwargs['test_id']
@@ -80,30 +84,38 @@ class SectionDetailView(generics.RetrieveAPIView):
     lookup_field = 'id'
     lookup_url_kwarg = 'section_id'
 
+class AllSectionsListView(generics.ListAPIView):
+    queryset = Section.objects.all()
+    serializer_class = SectionSerializer
+    permission_classes = [AllowAny]
 
 # Question Views
 class CreateQuestionView(generics.CreateAPIView):
     queryset = Question.objects.all()
     serializer_class = QuestionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
 
 
+# Replace it with this (CORRECTED)
 class ListQuestionsBySectionView(generics.ListAPIView):
     serializer_class = QuestionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [AllowAny] # You might want to change this to IsAuthenticated later
 
     def get_queryset(self):
+        # Get both IDs from the URL
+        test_id = self.kwargs['test_id']
         section_id = self.kwargs['section_id']
-        return Question.objects.filter(section__id=section_id)
-
+        
+        # Filter by both to ensure we only get questions from the correct section of the correct test
+        return Question.objects.filter(section__test__id=test_id, section__id=section_id)
 
 class QuestionDetailView(generics.RetrieveAPIView):
     queryset = Question.objects.all()
     serializer_class = QuestionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [AllowAny]
     #lookup_field = 'question_id'
     lookup_field = 'id'
     lookup_url_kwarg = 'question_id'
@@ -113,12 +125,12 @@ class QuestionDetailView(generics.RetrieveAPIView):
 class CreateOptionView(generics.CreateAPIView):
     queryset = Option.objects.all()
     serializer_class = OptionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [AllowAny]
 
 
 class ListOptionsByQuestionView(generics.ListAPIView):
     serializer_class = OptionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get_queryset(self):
         question_id = self.kwargs['question_id']
@@ -128,7 +140,7 @@ class ListOptionsByQuestionView(generics.ListAPIView):
 class OptionDetailView(generics.RetrieveAPIView):
     queryset = Option.objects.all()
     serializer_class = OptionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [AllowAny]
     #lookup_field = 'option_id'
     lookup_field = 'id'
     lookup_url_kwarg = 'option_id'
@@ -179,7 +191,10 @@ def fetch_section_questions(request, section_id):
 
     return JsonResponse(response_data, safe=False)
 
-# --- NEW: A view for an Admin to assign a test to an imported candidate ---
+# test_creation/views.py
+
+# --- FIX 1: AssignTestToCandidateView is now a clean, separate class. ---
+# Its only job is to assign a test. All timer logic has been removed.
 class AssignTestToCandidateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -193,53 +208,97 @@ class AssignTestToCandidateView(APIView):
         if not candidate_email or not test_id:
             return Response({"error": "candidate_email and test_id are required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # --- THIS IS THE ROBUST FIX ---
-        # Instead of finding the Candidate profile first, find the User first.
-        # This is more direct and reliable.
         try:
+            # Step 1: Fetch the user and test objects.
             user = User.objects.get(email=candidate_email, role='CANDIDATE')
             test = Test.objects.get(id=test_id)
-        except User.DoesNotExist:
-            return Response({"error": f"No candidate user found with email {candidate_email}."}, status=status.HTTP_404_NOT_FOUND)
-        except Test.DoesNotExist:
-            return Response({"error": f"No test found with id {test_id}."}, status=status.HTTP_404_NOT_FOUND)
-        
-        # Now that we have the user, get their associated candidate profile.
-        # The profile is guaranteed to exist if the creation step was successful.
-        candidate_profile = user.candidate_profile
-        # --- END OF FIX ---
 
-        # Optional: Check if the admin owns the test they are assigning
-        if test.created_by != request.user:
-            return Response({"error": "You can only assign tests that you have created."}, status=status.HTTP_403_FORBIDDEN)
+            # --- FIX 2: All logic using 'user' and 'test' is now INSIDE the 'try' block. ---
+            # This guarantees they exist and prevents the NameError.
             
-        # Pass the primary key of the candidate profile to the serializer
-        try:
-            # get_or_create is a safe and robust way to do this.
-            # It tries to find a record with this candidate and test.
-            # If it exists, it returns it. If not, it creates it.
+            # Optional: Check if the admin owns the test they are assigning
+            if test.created_by != request.user:
+                return Response({"error": "You can only assign tests that you have created."}, status=status.HTTP_403_FORBIDDEN)
+
+            # Get the candidate profile associated with the user
+            candidate_profile = user.candidate_profile
+            
+            # Create the assignment using get_or_create
             assignment, created = Candidate_Test.objects.get_or_create(
                 candidate=candidate_profile,
                 test=test
-                # The 'status' field will automatically use its default 'PENDING'.
             )
 
             if not created:
-                # This means the candidate was already assigned to this test.
                 return Response(
                     {"error": f"Candidate {candidate_email} is already assigned to this test."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # If we reach here, the assignment was created successfully.
-            # We serialize the object we just created to send a clean response.
+            # Serialize the new assignment for a clean response
             response_serializer = TestAssignmentSerializer(assignment)
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
+        # Step 2: Handle specific "not found" errors.
+        except User.DoesNotExist:
+            return Response({"error": f"No candidate user found with email {candidate_email}."}, status=status.HTTP_404_NOT_FOUND)
+        except Test.DoesNotExist:
+            return Response({"error": f"No test found with id {test_id}."}, status=status.HTTP_404_NOT_FOUND)
+        except Candidate.DoesNotExist:
+            return Response({"error": f"A profile for the user {candidate_email} does not exist."}, status=404)
         except Exception as e:
             # Catch any other unexpected database errors.
             return Response({"error": f"An unexpected error occurred during assignment: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
+
+# --- FIX 3: GetTimerView is now its own class with the correct logic. ---
+class GetTimerView(View):
+    def get(self, request, *args, **kwargs):
+        try:
+            # These were undefined in your original code, causing a NameError
+            session_id = int(request.GET.get('session_id'))
+            section_id = int(request.GET.get('section_id'))
+        except (TypeError, ValueError):
+            return JsonResponse({'error': 'session_id and section_id are required and must be numbers.'}, status=400)
+
+        try:
+            timer = SectionTimer.objects.get(session_id=session_id, section_id=section_id)
+            return JsonResponse({'remaining_time': timer.remaining_time})
+        except SectionTimer.DoesNotExist:
+            try:
+                # Fetch default from Section model if no timer exists
+                section = Section.objects.get(id=section_id)
+                # default to 60 mins (3600s) if time_limit is not set
+                default_time = (section.time_limit or 60) * 60  
+                return JsonResponse({'remaining_time': default_time})
+            except Section.DoesNotExist:
+                return JsonResponse({'error': 'Section not found'}, status=404)
+
+
+# --- Your SaveTimerView was mostly correct, but needs to be a separate class ---
+@method_decorator(csrf_exempt, name='dispatch')
+class SaveTimerView(View):
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            session_id = data.get('session_id')
+            section_id = data.get('section_id')
+            remaining_time = data.get('remaining_time')
+            
+            if session_id is None or section_id is None or remaining_time is None:
+                return JsonResponse({'error': 'session_id, section_id, and remaining_time are required.'}, status=400)
+                
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+        # Your logic for saving the timer would go here. For example:
+        SectionTimer.objects.update_or_create(
+            session_id=session_id,
+            section_id=section_id,
+            defaults={'remaining_time': remaining_time}
+        )
+        return JsonResponse({'status': 'success'}, status=200)
+
 class FullTestCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -315,9 +374,11 @@ class FullTestCreateView(APIView):
             for q_data in section_data.get('questions', []):
                 if q_data.get('type') == 'paragraph':
                     parent_question = Question.objects.create(
-                        section=section, created_by=user,
+                        section=section, 
+                        created_by=user,
                         type='paragraph',
                         paragraph_content=q_data.get('paragraph'),
+                        text='Read the following passage and answer the questions that follow.'
                     )
                     for sub_q_data in q_data.get('subQuestions', []):
                         Question.objects.create(
@@ -336,7 +397,7 @@ class FullTestCreateView(APIView):
                         # Fix 3: Save NULL if text is empty/missing
                         'text': q_data.get('text') or None,
                         # Fix 1: Correctly get the boolean value
-                        'allow_multiple': q_data.get('allowMultiple', False),
+                        'allow_multiple': q_data.get('allowMultiple') is True,
                         # Fix 3: Default other optional fields to None
                         'video_time': q_data.get('videoTime') or None,
                         'audio_time': q_data.get('audioTime') or None,
@@ -344,11 +405,11 @@ class FullTestCreateView(APIView):
 
                     # Fix 2 & 3: Handle fib_answer specifically
                     if question_type == 'fib':
+                         # For FIB questions, save the answer. Default to None if it's empty.
                         question_data_to_save['fib_answer'] = q_data.get('fibAnswer') or None
                     else:
-                        # Ensure fib_answer is NULL for all other question types
+                        # For ALL OTHER question types, force the answer to be None (NULL).
                         question_data_to_save['fib_answer'] = None
-                    # --- END OF FIX ---
 
                     # Create the question object from our clean data
                     question = Question.objects.create(**question_data_to_save)

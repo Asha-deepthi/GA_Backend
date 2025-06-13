@@ -7,7 +7,7 @@ from users.models import Candidate
 class OptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Option
-        fields = ['id', 'question', 'text', 'is_correct', 'order_index']
+        fields = ['id', 'question', 'text', 'is_correct']
         
 class QuestionSerializer(serializers.ModelSerializer):
     options = OptionSerializer(many=True, read_only=True)
@@ -52,10 +52,11 @@ class TestSerializer(serializers.ModelSerializer):
 
 class NestedCandidateSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
+    phone = serializers.CharField(source='user.phone', read_only=True, allow_null=True)
 
     class Meta:
         model = Candidate
-        fields = ['name', 'email']
+        fields = ['name', 'email', 'phone']
 
 
 # --- THIS IS THE CORRECTED ASSIGNMENT SERIALIZER ---

@@ -35,7 +35,7 @@ class Section(models.Model):
     # --- Fields from SectionSetupPage.jsx ---
     name = models.CharField(max_length=255)
     type = models.CharField(max_length=100, help_text="e.g., mcq, fib, audio, video, paragraph")
-    time_limit = models.CharField(max_length=20, blank=True, help_text="e.g., 00:00:00")
+    time_limit = models.CharField(max_length=20, blank=True, help_text="e.g., 00:00:00",default=30)
     num_questions = models.PositiveIntegerField(null=True, blank=True)
     marks_per_question = models.FloatField(null=True, blank=True)
     max_marks = models.FloatField(null=True, blank=True)
@@ -94,7 +94,6 @@ class Candidate_Test(models.Model):
     # Set the default status to 'PENDING'
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     # --- END OF CHANGE ---
-
     score = models.FloatField(null=True, blank=True)
     date_invited = models.DateTimeField(null=True, blank=True) # Changed to allow null initially
     
@@ -103,3 +102,11 @@ class Candidate_Test(models.Model):
 
     def __str__(self):
         return f"{self.candidate.name} assigned to {self.test.title}"
+
+class SectionTimer(models.Model):
+   #making migrations
+   section_id = models.IntegerField()
+   updated_at = models.DateTimeField(auto_now=True)
+   remaining_time = models.IntegerField()
+   session_id = models.IntegerField()
+
