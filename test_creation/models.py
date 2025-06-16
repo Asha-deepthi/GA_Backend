@@ -110,3 +110,6 @@ class SectionTimer(models.Model):
    remaining_time = models.IntegerField()
    session_id = models.IntegerField()
 
+   def __str__(self):
+        return f"Timer - Session {self.session_id}, Section {self.section_id}"
+   

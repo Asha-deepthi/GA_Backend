@@ -255,25 +255,26 @@ class AssignTestToCandidateView(APIView):
 class GetTimerView(View):
     def get(self, request, *args, **kwargs):
         try:
-            # These were undefined in your original code, causing a NameError
             session_id = int(request.GET.get('session_id'))
             section_id = int(request.GET.get('section_id'))
         except (TypeError, ValueError):
-            return JsonResponse({'error': 'session_id and section_id are required and must be numbers.'}, status=400)
+            return JsonResponse({'error': 'session_id and section_id must be valid integers.'}, status=400)
 
         try:
-            timer = SectionTimer.objects.get(session_id=session_id, section_id=section_id)
-            return JsonResponse({'remaining_time': timer.remaining_time})
-        except SectionTimer.DoesNotExist:
-            try:
-                # Fetch default from Section model if no timer exists
-                section = Section.objects.get(id=section_id)
-                # default to 60 mins (3600s) if time_limit is not set
-                default_time = (section.time_limit or 60) * 60  
-                return JsonResponse({'remaining_time': default_time})
-            except Section.DoesNotExist:
-                return JsonResponse({'error': 'Section not found'}, status=404)
-
+            timer = SectionTimer.objects.filter(session_id=session_id, section_id=section_id).first()
+            if timer:
+                return JsonResponse({'remaining_time': timer.remaining_time})
+            
+            section = Section.objects.get(id=section_id)
+            default_minutes = section.time_limit
+            if not isinstance(default_minutes, int) or default_minutes <= 0:
+                default_minutes = 60
+            return JsonResponse({'remaining_time': default_minutes * 60})
+        except Section.DoesNotExist:
+            return JsonResponse({'error': 'Section not found'}, status=404)
+        except Exception as e:
+            print("❌ Unexpected error in GetTimerView:", e)
+            return JsonResponse({'error': 'Internal server error'}, status=500)
 
 # --- Your SaveTimerView was mostly correct, but needs to be a separate class ---
 @method_decorator(csrf_exempt, name='dispatch')
