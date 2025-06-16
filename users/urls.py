@@ -1,19 +1,36 @@
-#from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+#backend/users/urls.py
+#import uuid
 #from django.urls import path
+#from .views import SendVerificationEmailView, VerifyEmailView, EmailOrPhoneLoginView
 
 #urlpatterns = [
-#   path('login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-#   path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+#    path('send-verification-email/', SendVerificationEmailView.as_view(), name='send_verification_email'),
+#    #path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
+#    path('verify-email/<uuid:uuid>/', VerifyEmailView.as_view(), name='verify_email'),
+#     path('login/', EmailOrPhoneLoginView.as_view(), name='email-or-phone-login'),
 #]
 
-#backend/users/urls.py
+# backend/users/urls.py
+
 import uuid
 from django.urls import path
-from .views import SendVerificationEmailView, VerifyEmailView, EmailOrPhoneLoginView
+from .views import (
+    UnifiedSignupView,      # The new smart signup view
+    VerifyEmailView, 
+    EmailOrPhoneLoginView,
+    ImportCandidateView
+)
 
 urlpatterns = [
-    path('send-verification-email/', SendVerificationEmailView.as_view(), name='send_verification_email'),
-    #path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('verify-email/<uuid:uuid>/', VerifyEmailView.as_view(), name='verify_email'),
-     path('login/', EmailOrPhoneLoginView.as_view(), name='email-or-phone-login'),
+    # The main signup URL for both Admins and Candidates completing registration
+    path('signup/', UnifiedSignupView.as_view(), name='unified-signup'),
+    
+    # URL for Admins to verify their email
+    path('verify-email/<uuid:uuid>/', VerifyEmailView.as_view(), name='verify-email'), 
+    
+    # URL for Admins to import candidates
+    path('import-candidate/', ImportCandidateView.as_view(), name='import-candidate'),
+
+    # The login URL for everyone
+    path('login/', EmailOrPhoneLoginView.as_view(), name='login'),
 ]
