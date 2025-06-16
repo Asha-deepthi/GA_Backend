@@ -1,5 +1,6 @@
 from django.db import models
 from test_creation.models import Test, Question, Section
+from test_creation.models import Candidate_Test
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
@@ -46,11 +47,10 @@ class TestSession(models.Model):
     score = models.FloatField(null=True, blank=True)
 
 class Answer(models.Model):
-    # Temporarily using IntegerFields instead of ForeignKeys
-    session_id = models.IntegerField(null=True, blank=True)  # Temporary substitute for ForeignKey to TestSession
+    candidate_test = models.ForeignKey(Candidate_Test, on_delete=models.CASCADE, null=True, blank=True, related_name="answers")
     section_id = models.IntegerField(null=True, blank=True)
-    question_id = models.IntegerField(null=True, blank=True)  # Temporary substitute for ForeignKey to Question
-    question_type = models.CharField(max_length=50, null=True, blank=True)
+    question_id = models.IntegerField(null=True, blank=True)  
+    section_type = models.CharField(max_length=50, null=True, blank=True)
     status = models.CharField(max_length=20, null=True, blank=True)
 
     # Supports all types
@@ -88,7 +88,7 @@ class ProctoringLog(models.Model):
         ('camera_off', 'Camera Off'),
     ]
 
-    session_id = models.IntegerField(null=True, blank=True)  # Temporary substitute for ForeignKey to TestSession
+    candidate_test = models.ForeignKey(Candidate_Test, on_delete=models.CASCADE, null=True, blank=True, related_name="proctoring_logs")
     timestamp = models.DateTimeField(auto_now_add=True)
     event_type = models.CharField(max_length=50, choices=EVENT_TYPE_CHOICES)
     confidence = models.FloatField()
@@ -143,7 +143,7 @@ class DemoAudioResponse(models.Model):
         return f"DemoAudioResponse by {self.user.username} at {self.uploaded_at}"
 
 class ProctoringScreenshot(models.Model):
-    session = models.IntegerField()
+    candidate_test = models.ForeignKey(Candidate_Test, on_delete=models.CASCADE, null=True, blank=True, related_name="proctoring_screenshots")
     screenshot = models.ImageField(upload_to='proctoring_screenshots/')
     timestamp = models.DateTimeField(auto_now_add=True)
 

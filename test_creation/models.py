@@ -108,7 +108,7 @@ class SectionTimer(models.Model):
    section_id = models.IntegerField()
    updated_at = models.DateTimeField(auto_now=True)
    remaining_time = models.IntegerField()
-   session_id = models.IntegerField()
+   candidate_test = models.ForeignKey(Candidate_Test, on_delete=models.CASCADE, null=True, blank=True, related_name="timers")
 
    def __str__(self):
         return f"Timer - Session {self.session_id}, Section {self.section_id}"
