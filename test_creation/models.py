@@ -24,7 +24,7 @@ class Test(models.Model):
     attempts_type = models.CharField(max_length=50, default='unlimited') # 'unlimited' or 'limited'
     number_of_attempts = models.PositiveIntegerField(null=True, blank=True)
     
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True)
 
     def __str__(self):
         return self.title
@@ -45,7 +45,7 @@ class Section(models.Model):
     shuffle_answers = models.BooleanField(default=False)
     instructions = models.TextField(blank=True)
     
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,null=True)
 
     def __str__(self):
         return self.name
@@ -63,7 +63,7 @@ class Question(models.Model):
     video_time = models.PositiveIntegerField(default=60, help_text="Max seconds for video")
     audio_time = models.PositiveIntegerField(default=60, help_text="Max seconds for audio")
     
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True)
 
     def __str__(self):
         return self.text[:50]
