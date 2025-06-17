@@ -104,12 +104,21 @@ class Candidate_Test(models.Model):
         return f"{self.candidate.name} assigned to {self.test.title}"
 
 class SectionTimer(models.Model):
-   #making migrations
-   section_id = models.IntegerField()
-   updated_at = models.DateTimeField(auto_now=True)
-   remaining_time = models.IntegerField()
-   candidate_test = models.ForeignKey(Candidate_Test, on_delete=models.CASCADE, null=True, blank=True, related_name="timers")
+    candidate_test = models.ForeignKey(
+        Candidate_Test, 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True, 
+        related_name="timers"
+    )
+    section = models.ForeignKey(
+        Section, 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+    remaining_time = models.IntegerField()
 
-   def __str__(self):
-        return f"Timer - Session {self.session_id}, Section {self.section_id}"
-   
+    def __str__(self):
+        return f"Timer - CandidateTest {self.candidate_test_id}, Section {self.section_id}"

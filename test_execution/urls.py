@@ -3,7 +3,7 @@ from .views import (
     BasicDetailsCreateView, GetUserView, DemoQuestionListView, TestSessionListCreateView, TestSessionDetailView, AnswerSubmissionView,
     ProctoringLogListCreateView, ProctoringLogDetailView, ProctorCommentListCreateView, ProctorCommentDetailView,
     PageContentListCreateView, PageContentDetailView, AudioUploadView, VideoUploadView, DemoAudioUploadView, AnswerListView,
-    ProctoringScreenshotUploadView, ManualAnswerEvaluationView
+    ProctoringScreenshotUploadView, ManualAnswerEvaluationView, ListSectionsWithProgressView
 )
  
 urlpatterns = [
@@ -38,4 +38,6 @@ urlpatterns = [
     path('upload-video/', VideoUploadView.as_view(), name='upload-video'),
 
     path('upload-demo-audio/', DemoAudioUploadView.as_view(), name='upload-demo-audio'),
+
+    path("candidate-section-progress/", ListSectionsWithProgressView.as_view(), name="section-progress"),
 ]

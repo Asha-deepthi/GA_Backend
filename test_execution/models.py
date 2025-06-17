@@ -74,7 +74,7 @@ class Answer(models.Model):
         return self.is_answered()
 
     def __str__(self):
-        return f"Answer to Q{self.question_id} by Session {self.session_id}"
+     return f"Answer to Q{self.question_id} in Section {self.section_id} (Test {self.candidate_test.test.id})"
 
 class ProctoringLog(models.Model):
     EVENT_TYPE_CHOICES = [

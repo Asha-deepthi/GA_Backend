@@ -2,10 +2,11 @@ from django.shortcuts import render
 from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated , AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework import status
 from .models import *
+from test_creation.models import Test, Section, Candidate_Test
 from .serializers import *
 from django.conf import settings
 import json
@@ -246,3 +247,38 @@ class ProctoringScreenshotUploadView(APIView):
 class TestRouteView(APIView):
     def post(self, request):
         return Response({"message": "Test route works!"})
+
+class ListSectionsWithProgressView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        test_id = request.query_params.get("test_id")
+        candidate_test_id = request.query_params.get("candidate_test_id")
+
+        if not test_id or not candidate_test_id:
+            return Response({"error": "Both test_id and candidate_test_id are required."}, status=400)
+
+        try:
+            candidate_test = Candidate_Test.objects.get(id=candidate_test_id)
+        except Candidate_Test.DoesNotExist:
+            return Response({"error": "Invalid candidate_test_id"}, status=404)
+
+        sections = Section.objects.filter(test__id=test_id)
+        result = []
+
+        for section in sections:
+            total_questions = section.questions.count()
+            attempted_answers = Answer.objects.filter(
+                candidate_test_id=candidate_test_id,
+                section_id=section.id
+            ).exclude(answer_text__isnull=True).exclude(answer_text="").count()
+
+            result.append({
+                "section_id": section.id,
+                "section_name": section.name,
+                "section_type": section.type,
+                "total_questions": total_questions,
+                "attempted_questions": attempted_answers
+            })
+
+        return Response(result, status=200)

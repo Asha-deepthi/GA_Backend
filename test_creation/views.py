@@ -255,21 +255,24 @@ class AssignTestToCandidateView(APIView):
 class GetTimerView(View):
     def get(self, request, *args, **kwargs):
         try:
-            session_id = int(request.GET.get('session_id'))
+            candidate_test_id = int(request.GET.get('candidate_test_id'))
             section_id = int(request.GET.get('section_id'))
         except (TypeError, ValueError):
-            return JsonResponse({'error': 'session_id and section_id must be valid integers.'}, status=400)
+            return JsonResponse({'error': 'candidate_test_id and section_id must be valid integers.'}, status=400)
 
         try:
-            timer = SectionTimer.objects.filter(session_id=session_id, section_id=section_id).first()
+            timer = SectionTimer.objects.filter(
+                candidate_test_id=candidate_test_id,
+                section_id=section_id
+            ).first()
+
             if timer:
                 return JsonResponse({'remaining_time': timer.remaining_time})
-            
+
             section = Section.objects.get(id=section_id)
-            default_minutes = section.time_limit
-            if not isinstance(default_minutes, int) or default_minutes <= 0:
-                default_minutes = 60
+            default_minutes = int(section.time_limit) if section.time_limit else 30
             return JsonResponse({'remaining_time': default_minutes * 60})
+
         except Section.DoesNotExist:
             return JsonResponse({'error': 'Section not found'}, status=404)
         except Exception as e:
@@ -282,23 +285,25 @@ class SaveTimerView(View):
     def post(self, request):
         try:
             data = json.loads(request.body)
-            session_id = data.get('session_id')
+            candidate_test_id = data.get('candidate_test_id')
             section_id = data.get('section_id')
             remaining_time = data.get('remaining_time')
-            
-            if session_id is None or section_id is None or remaining_time is None:
-                return JsonResponse({'error': 'session_id, section_id, and remaining_time are required.'}, status=400)
-                
+
+            if candidate_test_id is None or section_id is None or remaining_time is None:
+                return JsonResponse({'error': 'candidate_test_id, section_id, and remaining_time are required.'}, status=400)
+
+            SectionTimer.objects.update_or_create(
+                candidate_test_id=candidate_test_id,
+                section_id=section_id,
+                defaults={'remaining_time': remaining_time}
+            )
+            return JsonResponse({'status': 'success'}, status=200)
+
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON'}, status=400)
-
-        # Your logic for saving the timer would go here. For example:
-        SectionTimer.objects.update_or_create(
-            session_id=session_id,
-            section_id=section_id,
-            defaults={'remaining_time': remaining_time}
-        )
-        return JsonResponse({'status': 'success'}, status=200)
+        except Exception as e:
+            print("❌ Error in SaveTimerView:", e)
+            return JsonResponse({'error': 'Internal server error'}, status=500)
 
 class FullTestCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
