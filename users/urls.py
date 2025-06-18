@@ -18,7 +18,8 @@ from .views import (
     UnifiedSignupView,      # The new smart signup view
     VerifyEmailView, 
     EmailOrPhoneLoginView,
-    ImportCandidateView
+    ImportCandidateView,
+    CurrentCandidateAPIView
 )
 
 urlpatterns = [
@@ -33,4 +34,6 @@ urlpatterns = [
 
     # The login URL for everyone
     path('login/', EmailOrPhoneLoginView.as_view(), name='login'),
+
+    path('me/', CurrentCandidateAPIView.as_view(), name='current-candidate'),
 ]

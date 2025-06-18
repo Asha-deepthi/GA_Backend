@@ -9,6 +9,7 @@ from .models import Test, Section, Question, Option, SectionTimer
 from .serializers import TestSerializer, SectionSerializer, QuestionSerializer, OptionSerializer
 import json
 from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
 from django.http import JsonResponse
 from django.conf import settings
 from django.core.cache import cache
@@ -19,7 +20,7 @@ from django.utils import timezone
 #from .models import SectionTimer
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-from .models import Test,Candidate_Test
+from .models import Candidate_Test
 from .serializers import TestAssignmentSerializer
 from users.models import Candidate
 from django.db import transaction
@@ -255,12 +256,13 @@ class AssignTestToCandidateView(APIView):
 class GetTimerView(View):
     def get(self, request, *args, **kwargs):
         try:
-            candidate_test_id = int(request.GET.get('candidate_test_id'))
+            candidate_test_id = request.GET.get('candidate_test_id')
             section_id = int(request.GET.get('section_id'))
         except (TypeError, ValueError):
-            return JsonResponse({'error': 'candidate_test_id and section_id must be valid integers.'}, status=400)
+            return JsonResponse({'error': 'candidate_test_id and section_id must be valid.'}, status=400)
 
         try:
+            # Try fetching existing timer
             timer = SectionTimer.objects.filter(
                 candidate_test_id=candidate_test_id,
                 section_id=section_id
@@ -269,9 +271,25 @@ class GetTimerView(View):
             if timer:
                 return JsonResponse({'remaining_time': timer.remaining_time})
 
+            # If timer doesn't exist, fetch section's default time
             section = Section.objects.get(id=section_id)
-            default_minutes = int(section.time_limit) if section.time_limit else 30
-            return JsonResponse({'remaining_time': default_minutes * 60})
+
+            if section.time_limit:
+                if isinstance(section.time_limit, str) and ':' in section.time_limit:
+                    try:
+                        mins, secs = map(int, section.time_limit.split(":"))
+                        default_seconds = mins * 60 + secs
+                    except Exception:
+                        default_seconds = 30 * 60  # fallback to 30 min
+                else:
+                    try:
+                        default_seconds = int(section.time_limit) * 60
+                    except Exception:
+                        default_seconds = 30 * 60
+            else:
+                default_seconds = 30 * 60
+
+            return JsonResponse({'remaining_time': default_seconds})
 
         except Section.DoesNotExist:
             return JsonResponse({'error': 'Section not found'}, status=404)
@@ -522,3 +540,26 @@ class SendInvitationsView(APIView):
                 continue
 
         return Response({"message": f"{sent_count} invitation(s) sent successfully."}, status=status.HTTP_200_OK)
+    
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_candidate_test_id(request):
+    candidate_id = request.GET.get("candidate_id")
+    test_id = request.GET.get("test_id")
+
+    try:
+        ct = Candidate_Test.objects.get(candidate_id=candidate_id, test_id=test_id)
+        test = ct.test
+        return Response({
+            "id": ct.id,
+            "sections": [
+                {
+                    "id": s.id,
+                    "name": s.name,
+                    "time_limit": s.time_limit,
+                }
+                for s in test.sections.all()
+            ],
+        })
+    except Candidate_Test.DoesNotExist:
+        return Response({"detail": "Candidate_Test not found"}, status=404)
