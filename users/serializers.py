@@ -169,3 +169,23 @@ class EmailOrPhoneLoginSerializer(serializers.Serializer):
             "access": str(refresh.access_token),
             "user": user_data,
         }
+    
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    #username_field = CustomUser.EMAIL_FIELD  # This tells serializer to use 'email' instead of 'username'
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+
+        # Add custom fields to token payload
+        token['email'] = user.email
+        token['role'] = user.role
+
+        # Add 'name' based on role
+        if user.role == 'ADMIN':
+            token['name'] = 'Admin'
+        elif user.role == 'CANDIDATE':
+            try:
+                token['name'] = user.candidate_profile.name
+            except:
+                token['name'] = 'Candidate'
+        return token

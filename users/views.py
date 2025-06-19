@@ -19,6 +19,12 @@ from .serializers import (
     #SetPasswordSerializer           # NEW
 )
 from django.contrib.auth import get_user_model
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .tokens import CustomTokenObtainPairSerializer
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
+    permission_classes = [AllowAny]
 
 User = get_user_model()
 

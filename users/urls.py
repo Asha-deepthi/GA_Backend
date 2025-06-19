@@ -21,6 +21,8 @@ from .views import (
     ImportCandidateView,
     CurrentCandidateAPIView
 )
+from rest_framework_simplejwt.views import TokenObtainPairView
+from users.views import CustomTokenObtainPairView  # your custom view
 
 urlpatterns = [
     # The main signup URL for both Admins and Candidates completing registration
@@ -33,7 +35,7 @@ urlpatterns = [
     path('import-candidate/', ImportCandidateView.as_view(), name='import-candidate'),
 
     # The login URL for everyone
-    path('login/', EmailOrPhoneLoginView.as_view(), name='login'),
+    path('login/', CustomTokenObtainPairView.as_view(), name='login'),
 
     path('me/', CurrentCandidateAPIView.as_view(), name='current-candidate'),
 ]
