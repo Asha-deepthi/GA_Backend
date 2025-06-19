@@ -236,11 +236,11 @@ class ProctoringScreenshotUploadView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def get(self, request, *args, **kwargs):
-        session_id = request.query_params.get('session_id')
-        if not session_id:
-            return Response({"error": "session_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        candidate_test_id = request.query_params.get('candidate_test_id')
+        if not candidate_test_id:
+            return Response({"error": "candidate_test_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        screenshots = ProctoringScreenshot.objects.filter(session=session_id)
+        screenshots = ProctoringScreenshot.objects.filter(candidate_test_id=candidate_test_id)
         serializer = ProctoringScreenshotSerializer(screenshots, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     

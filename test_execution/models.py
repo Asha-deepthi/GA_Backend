@@ -148,4 +148,4 @@ class ProctoringScreenshot(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Screenshot for session {self.session} at {self.timestamp}"
+        return f"Screenshot for CandidateTest {self.candidate_test_id} at {self.timestamp}"
