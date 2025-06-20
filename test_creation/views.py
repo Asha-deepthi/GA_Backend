@@ -16,6 +16,7 @@ import random
 from rest_framework.permissions import IsAuthenticated
 from django.core.mail import send_mail
 from django.utils import timezone
+from dateutil.parser import isoparse
 #from .models import SectionTimer
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
@@ -369,53 +370,81 @@ class FullTestCreateView(APIView):
                 shuffle_answers=section_data.get('shuffleAnswers', False),
                 instructions=section_data.get('instructions'),
             )
-            
-            # The rest of the loop for creating questions and options remains unchanged.
+            # =================== START: PASTE THE NEW, CORRECTED CODE HERE ===================
+            # This loop now correctly handles all question types and their specific issues.
             for q_data in section_data.get('questions', []):
-                if q_data.get('type') == 'paragraph':
+                question_type = q_data.get('type')
+
+                # --- Section for PARAGRAPH questions ---
+                if question_type == 'paragraph':
+                    # FIX #1: Correctly save BOTH the default text and the paragraph content.
                     parent_question = Question.objects.create(
-                        section=section, 
+                        section=section,
                         created_by=user,
                         type='paragraph',
-                        paragraph_content=q_data.get('paragraph'),
-                        text='Read the following passage and answer the questions that follow.'
+                        text='Read the following passage and answer the questions that follow.',
+                        paragraph_content=q_data.get('paragraph') # This was the missing line.
                     )
-                    for sub_q_data in q_data.get('subQuestions', []):
-                        Question.objects.create(
-                            section=section, parent_question=parent_question, created_by=user,
-                            type=sub_q_data.get('type'), text=sub_q_data.get('text')
-                        )
-                else:
-                    # --- START OF FIX ---
-                    question_type = q_data.get('type')
-
-                    # Prepare data with proper defaults and cleaning
-                    question_data_to_save = {
-                        'section': section,
-                        'created_by': user,
-                        'type': question_type,
-                        # Fix 3: Save NULL if text is empty/missing
-                        'text': q_data.get('text') or None,
-                        # Fix 1: Correctly get the boolean value
-                        'allow_multiple': q_data.get('allowMultiple') is True,
-                        # Fix 3: Default other optional fields to None
-                        'video_time': q_data.get('videoTime') or None,
-                        'audio_time': q_data.get('audioTime') or None,
-                    }
-
-                    # Fix 2 & 3: Handle fib_answer specifically
-                    if question_type == 'fib':
-                         # For FIB questions, save the answer. Default to None if it's empty.
-                        question_data_to_save['fib_answer'] = q_data.get('fibAnswer') or None
-                    else:
-                        # For ALL OTHER question types, force the answer to be None (NULL).
-                        question_data_to_save['fib_answer'] = None
-
-                    # Create the question object from our clean data
-                    question = Question.objects.create(**question_data_to_save)
                     
-                    # This logic for creating options remains unchanged
-                    if q_data.get('type') == 'mcq':
+                    # Loop through the sub-questions.
+                    for sub_q_data in q_data.get('subQuestions', []):
+                        sub_question_type = sub_q_data.get('type')
+                        sub_fib_answer = None
+
+                        # FIX #2 (for sub-questions): Handle multiple correct answers.
+                        if sub_question_type == 'mcq':
+                            correct_options = [opt.get('text') for opt in sub_q_data.get('options', []) if opt.get('isCorrect')]
+                            if correct_options:
+                                sub_fib_answer = '|'.join(correct_options) # Join multiple answers with '|||'
+                        elif sub_question_type == 'fib':
+                            sub_fib_answer = sub_q_data.get('correctAnswer')
+
+                        # Create the sub-question object.
+                        sub_question = Question.objects.create(
+                            section=section,
+                            parent_question=parent_question,
+                            created_by=user,
+                            type=sub_question_type,
+                            text=sub_q_data.get('text'),
+                            fib_answer=sub_fib_answer,
+                            allow_multiple=sub_q_data.get('allowMultiple', False)
+                        )
+
+                        # This part to save options for sub-questions is correct.
+                        if sub_question_type == 'mcq':
+                            for opt_data in sub_q_data.get('options', []):
+                                Option.objects.create(
+                                    question=sub_question,
+                                    text=opt_data.get('text'),
+                                    is_correct=opt_data.get('isCorrect', False)
+                                )
+                
+                # --- Section for ALL OTHER question types (MCQ, FIB, etc.) ---
+                else:
+                    fib_answer_value = None
+                    # FIX #2 (for main questions): Handle multiple correct answers.
+                    if question_type == 'mcq':
+                        correct_answers = [opt.get('text') for opt in q_data.get('answers', []) if opt.get('isCorrect')]
+                        if correct_answers:
+                            fib_answer_value = '|'.join(correct_answers) # Join multiple answers with '|||'
+                    elif question_type == 'fib':
+                        fib_answer_value = q_data.get('fib_answer')
+
+                    # Create the main question object with all fixes.
+                    question = Question.objects.create(
+                        section=section,
+                        created_by=user,
+                        type=question_type,
+                        text=q_data.get('text'),
+                        video_time=q_data.get('videoTime'),
+                        audio_time=q_data.get('audioTime'),
+                        fib_answer=fib_answer_value,
+                        # FIX #3: Correctly save the 'allow_multiple' boolean value.
+                        allow_multiple=q_data.get('allowMultiple', False)
+                    )
+
+                    # This part for creating options for main MCQs is correct.
+                    if question_type == 'mcq':
                         for opt_data in q_data.get('answers', []):
                             Option.objects.create(
                                 question=question,
@@ -423,7 +452,7 @@ class FullTestCreateView(APIView):
                                 weightage=opt_data.get('weightage', ''),
                                 is_correct=opt_data.get('isCorrect', False)
                             )
-
+            # =================== END: OF THE PASTED CODE ===================
         return Response({"message": "Test created successfully!", "test_id": test.id}, status=status.HTTP_201_CREATED)
     
 # --- ADD THIS ENTIRE NEW VIEW CLASS AT THE END OF THE FILE ---
@@ -470,9 +499,15 @@ class SendInvitationsView(APIView):
     def post(self, request, *args, **kwargs):
         test_id = request.data.get('test_id')
         message_body = request.data.get('message', 'You have been invited to take an online assessment.')
+        expiry_date_str = request.data.get('expiry_date')
 
-        if not test_id:
-            return Response({"error": "Test ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not test_id or not expiry_date_str:
+            return Response({"error": "Test ID and expiry_date are required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            expiry_date_obj = isoparse(expiry_date_str)
+        except ValueError:
+            return Response({"error": "Invalid expiry_date format. Please use ISO 8601 format."}, status=status.HTTP_400_BAD_REQUEST)
 
         assignments = Candidate_Test.objects.filter(test_id=test_id, status='PENDING')
         if not assignments:
@@ -508,6 +543,7 @@ class SendInvitationsView(APIView):
                 
                 assignment.status = 'SENT'
                 assignment.date_invited = timezone.now()
+                assignment.expiry_date = expiry_date_obj
                 assignment.save()
                 sent_count += 1
             except Exception as e:
@@ -516,3 +552,51 @@ class SendInvitationsView(APIView):
                 continue
 
         return Response({"message": f"{sent_count} invitation(s) sent successfully."}, status=status.HTTP_200_OK)
+    
+class CandidateTestStartView(APIView):
+    """
+    View for a logged-in candidate to start their assigned test.
+    This view performs critical checks before returning test data.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, assignment_id, *args, **kwargs):
+        # The user must be a candidate to take a test
+        if request.user.role != 'CANDIDATE':
+            return Response({"error": "Only candidates can take tests."}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            # Step 1: Get the specific test assignment for this candidate
+            # This ensures a candidate can only access their own assigned test.
+            assignment = Candidate_Test.objects.get(id=assignment_id, candidate__user=request.user)
+
+        except Candidate_Test.DoesNotExist:
+            return Response({"error": "Test assignment not found or you are not authorized."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Step 2: Check the assignment status first
+        if assignment.status == 'COMPLETED':
+            return Response({"error": "You have already completed this test."}, status=status.HTTP_403_FORBIDDEN)
+        
+        if assignment.status == 'EXPIRED':
+            return Response({"error": "This test link has expired."}, status=status.HTTP_403_FORBIDDEN)
+
+        # Step 3: *** THE CRUCIAL EXPIRY CHECK ***
+        # Check if an expiry date is set AND if the current time is past it.
+        if assignment.expiry_date and timezone.now() > assignment.expiry_date:
+            # The link has expired. Update the status and block access.
+            assignment.status = 'EXPIRED'
+            assignment.save()
+            return Response({
+                "error": f"This test link expired on {assignment.expiry_date.strftime('%B %d, %Y at %I:%M %p')}."
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        # Step 4: If all checks pass, mark the test as 'STARTED'
+        # This is a good practice to prevent re-entry and track progress.
+        if assignment.status not in ['STARTED', 'COMPLETED']:
+            assignment.status = 'STARTED'
+            assignment.save()
+
+        # Step 5: Success! Return the full test data.
+        # The frontend will now receive this data and render the test page.
+        test_data = TestSerializer(assignment.test).data
+        return Response(test_data, status=status.HTTP_200_OK)

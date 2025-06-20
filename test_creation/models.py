@@ -12,8 +12,8 @@ class Test(models.Model):
     description = models.TextField(blank=True)
     duration = models.PositiveIntegerField(null=True, blank=True, help_text="Total duration in minutes")
     tags = models.CharField(max_length=255, blank=True)
-    start_date = models.DateTimeField(null=True, blank=True)
-    end_date = models.DateTimeField(null=True, blank=True)
+    #start_date = models.DateTimeField(null=True, blank=True)
+    #end_date = models.DateTimeField(null=True, blank=True)
 
     # --- Fields from QuizSettings.jsx ---
     passing_percentage = models.PositiveIntegerField(null=True, blank=True)
@@ -90,12 +90,13 @@ class Candidate_Test(models.Model):
         ('SENT', 'Sent'),
         ('STARTED', 'Started'),
         ('COMPLETED', 'Completed'),
+        ('EXPIRED', 'Expired'),
     ]
     # Set the default status to 'PENDING'
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
-    # --- END OF CHANGE ---
     score = models.FloatField(null=True, blank=True)
-    date_invited = models.DateTimeField(null=True, blank=True) # Changed to allow null initially
+    date_invited = models.DateTimeField(null=True, blank=True) 
+    expiry_date = models.DateTimeField(null=True, blank=True, help_text="The date and time when this specific invitation expires.")
     
     class Meta:
         unique_together = ('candidate', 'test')

@@ -6,7 +6,7 @@ from .views import (
     CreateTestView, ListTestView, TestDetailView,
     CreateSectionView, ListSectionsByTestView, SectionDetailView,
     CreateQuestionView, ListQuestionsBySectionView, QuestionDetailView,
-    CreateOptionView, ListOptionsByQuestionView, OptionDetailView,AssignTestToCandidateView,
+    CreateOptionView, ListOptionsByQuestionView, OptionDetailView,AssignTestToCandidateView, CandidateTestStartView,
     FullTestCreateView,CreateCandidateUserView,fetch_section_questions,SendInvitationsView,ListAssignedCandidatesView,
     CreateOptionView, ListOptionsByQuestionView, OptionDetailView, GetTimerView, SaveTimerView, AllSectionsListView,
 )
@@ -80,4 +80,6 @@ urlpatterns = [
     path('assign-test/', AssignTestToCandidateView.as_view(), name='assign-test'),
     path('tests/<int:test_id>/assigned-candidates/', ListAssignedCandidatesView.as_view(), name='list-assigned-candidates'),
     path('send-invitations/', SendInvitationsView.as_view(), name='send-invitations'),
+    path('tests/start/<uuid:assignment_id>/', CandidateTestStartView.as_view(), name='candidate-start-test'),
+
 ]
