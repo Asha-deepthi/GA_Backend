@@ -1,6 +1,7 @@
 #backen/users/serializers.py
 from rest_framework import serializers
-from .models import CustomUser, Candidate, Role 
+from .models import CustomUser, Candidate, Role
+from test_creation.models import Candidate_Test 
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.exceptions import AuthenticationFailed
@@ -189,3 +190,19 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             except:
                 token['name'] = 'Candidate'
         return token
+
+class CandidateSerializer(serializers.ModelSerializer):
+    candidate_test_id = serializers.SerializerMethodField()
+    test_id = serializers.SerializerMethodField()
+    class Meta:
+        model = Candidate
+        fields = "__all__"
+
+    def get_candidate_test_id(self, obj):
+        # Get the most recent or first test assignment
+        candidate_test = Candidate_Test.objects.filter(candidate=obj).first()
+        return str(candidate_test.id) if candidate_test else None
+    
+    def get_test_id(self, obj):
+        ct = Candidate_Test.objects.filter(candidate=obj).first()
+        return ct.test.id if ct and ct.test else None

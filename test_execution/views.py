@@ -229,9 +229,18 @@ class DemoAudioUploadView(generics.CreateAPIView):
 
 class ProctoringScreenshotUploadView(APIView):
     def post(self, request, *args, **kwargs):
+        candidate_test_id = request.data.get("candidate_test_id")
+        if not candidate_test_id:
+            return Response({"error": "candidate_test_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            candidate_test = Candidate_Test.objects.get(id=candidate_test_id)
+        except Candidate_Test.DoesNotExist:
+            return Response({"error": "Invalid candidate_test_id"}, status=status.HTTP_404_NOT_FOUND)
+
         serializer = ProctoringScreenshotSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(candidate_test=candidate_test)  # ✅ Link screenshot to candidate_test
             return Response({"message": "Screenshot uploaded successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

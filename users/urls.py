@@ -19,7 +19,8 @@ from .views import (
     VerifyEmailView, 
     EmailOrPhoneLoginView,
     ImportCandidateView,
-    CurrentCandidateAPIView
+    CurrentCandidateAPIView,
+    ListCandidatesAPIView
 )
 from rest_framework_simplejwt.views import TokenObtainPairView
 from users.views import CustomTokenObtainPairView  # your custom view
@@ -38,4 +39,7 @@ urlpatterns = [
     path('login/', CustomTokenObtainPairView.as_view(), name='login'),
 
     path('me/', CurrentCandidateAPIView.as_view(), name='current-candidate'),
+
+    path('candidates/', ListCandidatesAPIView.as_view(), name='list-candidates'),
+
 ]

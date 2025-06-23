@@ -15,7 +15,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import (
     EmailOrPhoneLoginSerializer, 
     UnifiedSignupSerializer,          # NEW
-    ImportCandidateSerializer,      # NEW
+    ImportCandidateSerializer,
+    CandidateSerializer,      # NEW
     #SetPasswordSerializer           # NEW
 )
 from django.contrib.auth import get_user_model
@@ -251,3 +252,11 @@ class CurrentCandidateAPIView(APIView):
             })
         except Candidate.DoesNotExist:
             return Response({"detail": "Candidate not found"}, status=404)
+        
+class ListCandidatesAPIView(APIView):
+    permission_classes = [IsAuthenticated]  # or custom IsAdmin permission
+
+    def get(self, request):
+        candidates = Candidate.objects.all()
+        serializer = CandidateSerializer(candidates, many=True)
+        return Response(serializer.data)
