@@ -24,7 +24,7 @@ class Test(models.Model):
     attempts_type = models.CharField(max_length=50, default='unlimited') # 'unlimited' or 'limited'
     number_of_attempts = models.PositiveIntegerField(null=True, blank=True)
     
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True)
 
     def __str__(self):
         return self.title
@@ -45,7 +45,7 @@ class Section(models.Model):
     shuffle_answers = models.BooleanField(default=False)
     instructions = models.TextField(blank=True)
     
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,null=True)
 
     def __str__(self):
         return self.name
@@ -63,7 +63,7 @@ class Question(models.Model):
     video_time = models.PositiveIntegerField(default=60, help_text="Max seconds for video")
     audio_time = models.PositiveIntegerField(default=60, help_text="Max seconds for audio")
     
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True)
 
     def __str__(self):
         return self.text[:50]
@@ -81,9 +81,8 @@ class Option(models.Model):
     
 class Candidate_Test(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, help_text="Unique ID for the test invitation link.")
-    
-    candidate = models.ForeignKey(Candidate, on_delete=models.CASCADE, related_name="test_assignments")
-    test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name="assignments")
+    candidate = models.ForeignKey(Candidate, on_delete=models.CASCADE, related_name="test_assignments", null=True, blank=True)
+    test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name="assignments", null=True, blank=True)
     
     STATUS_CHOICES = [
         ('PENDING', 'Pending'), # <-- NEW DEFAULT
@@ -105,9 +104,21 @@ class Candidate_Test(models.Model):
         return f"{self.candidate.name} assigned to {self.test.title}"
 
 class SectionTimer(models.Model):
-   #making migrations
-   section_id = models.IntegerField()
-   updated_at = models.DateTimeField(auto_now=True)
-   remaining_time = models.IntegerField()
-   session_id = models.IntegerField()
+    candidate_test = models.ForeignKey(
+        Candidate_Test, 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True, 
+        related_name="timers"
+    )
+    section = models.ForeignKey(
+        Section, 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+    remaining_time = models.IntegerField()
 
+    def __str__(self):
+        return f"Timer - CandidateTest {self.candidate_test_id}, Section {self.section_id}"

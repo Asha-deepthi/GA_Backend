@@ -2,10 +2,11 @@ from django.shortcuts import render
 from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated , AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework import status
 from .models import *
+from test_creation.models import Test, Section, Candidate_Test
 from .serializers import *
 from django.conf import settings
 import json
@@ -37,16 +38,20 @@ class AnswerSubmissionView(APIView):
     def post(self, request, *args, **kwargs):
         print("AnswerSubmissionView POST called with data:", request.data)
 
-        session_id = request.data.get('session_id')
+        candidate_test_id = request.data.get('candidate_test_id')
         section_id = request.data.get('section_id')
         question_id = request.data.get('question_id')
         answer_text = request.data.get('answer_text')
         marked_for_review = request.data.get('marked_for_review', 'false').lower() == 'true'
         status = request.data.get('status') or 'unanswered'
 
-        
+        # Validate candidate_test
+        try:
+            candidate_test = Candidate_Test.objects.get(id=candidate_test_id)
+        except Candidate_Test.DoesNotExist:
+            return Response({"error": "Candidate_Test not found"}, status=404)
 
-        # Fetch from DB
+        # Fetch question and section
         try:
             question = Question.objects.get(id=question_id)
             section = Section.objects.get(id=section_id)
@@ -54,22 +59,18 @@ class AnswerSubmissionView(APIView):
             return Response({"error": "Question not found"}, status=404)
         except Section.DoesNotExist:
             return Response({"error": "Section not found"}, status=404)
-        
-        question_type = request.data.get('question_type')
-        if not question_type or question_type == "undefined":
-          question_type = question.type
+
+        # Use section.type as section_type
+        section_type = section.type
 
         # Auto-evaluation logic
         marks_allotted = 0
         evaluated = False
+        auto_eval_types = ['mcq', 'fib', 'integer']
 
-        auto_eval_types = ['multiple-choice', 'fill-in-blanks', 'integer']
-
-        if question_type.lower() in auto_eval_types:
+        if section_type.lower() in auto_eval_types:
             submitted = str(answer_text).strip().lower() if answer_text else ''
-            correct_answers = question.correct_answers or []
-
-            # Normalize correct answers
+            correct_answers = getattr(question, 'correct_answers', []) or []
             correct_answers = [str(ans).strip().lower() for ans in correct_answers]
 
             if submitted in correct_answers:
@@ -78,11 +79,11 @@ class AnswerSubmissionView(APIView):
 
         # Save or update the answer
         answer, created = Answer.objects.update_or_create(
-            session_id=session_id,
+            candidate_test=candidate_test,
             question_id=question_id,
             defaults={
                 'section_id': section_id,
-                'question_type': question_type,
+                'section_type': section_type,
                 'answer_text': answer_text,
                 'marked_for_review': marked_for_review,
                 'status': status,
@@ -97,8 +98,9 @@ class AnswerSubmissionView(APIView):
             "message": "Answer saved successfully",
             "marks_allotted": marks_allotted,
             "evaluated": evaluated,
-            "question_type": question.type  #  Include this explicitly for frontend
+            "section_type": section_type,  # For frontend use
         }, status=201)
+
 
 class ManualAnswerEvaluationView(APIView):
     def post(self, request):
@@ -121,13 +123,13 @@ class ManualAnswerEvaluationView(APIView):
 
 class AnswerListView(APIView):
     def get(self, request):
-        session_id = request.GET.get('session_id')
+        candidate_test_id = request.GET.get('candidate_test_id')
         section_id = request.GET.get('section_id')
 
-        if not session_id or not section_id:
-            return Response({"error": "session_id and section_id are required."}, status=400)
+        if not candidate_test_id or not section_id:
+            return Response({"error": "candidate_test_id and section_id are required."}, status=400)
 
-        answers = Answer.objects.filter(session_id=session_id, section_id=section_id)
+        answers = Answer.objects.filter(candidate_test_id=candidate_test_id, section_id=section_id)
 
         # Fetch related questions once
         questions = Question.objects.filter(section_id=section_id)
@@ -137,7 +139,7 @@ class AnswerListView(APIView):
         for ans in answers:
             question = question_lookup.get(str(ans.question_id))
             question_text = question.text if question else "Unknown question"
-            question_type = question.type if question else ans.question_type or "unknown"
+            question_type = question.type if question else ans.section_type or "unknown"
 
             print(f"[DEBUG] Answer ID: {ans.id}, QID: {ans.question_id}, Type: {question_type}")
 
@@ -145,7 +147,7 @@ class AnswerListView(APIView):
                 "answer_id": ans.id,
                 "question_id": ans.question_id,
                 "question": question_text,
-                "question_type": question_type,  # ✅ use from Question model
+                "question_type": question_type,  # From Question model or fallback
                 "section_id": ans.section_id,
                 "answer": get_answer_json(ans),
                 "marks_allotted": ans.marks_allotted,
@@ -157,9 +159,9 @@ class AnswerListView(APIView):
 
 # Utility function
 def get_answer_json(ans):
-    if ans.question_type == 'audio':
+    if ans.section_type == 'audio':
         return {"audioUrl": ans.audio_file.url if ans.audio_file else None}
-    elif ans.question_type == 'video':
+    elif ans.section_type == 'video':
         return {"videoUrl": ans.video_file.url if ans.video_file else None}
     else:
         return {"text": ans.answer_text}
@@ -234,14 +236,49 @@ class ProctoringScreenshotUploadView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def get(self, request, *args, **kwargs):
-        session_id = request.query_params.get('session_id')
-        if not session_id:
-            return Response({"error": "session_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        candidate_test_id = request.query_params.get('candidate_test_id')
+        if not candidate_test_id:
+            return Response({"error": "candidate_test_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        screenshots = ProctoringScreenshot.objects.filter(session=session_id)
+        screenshots = ProctoringScreenshot.objects.filter(candidate_test_id=candidate_test_id)
         serializer = ProctoringScreenshotSerializer(screenshots, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 class TestRouteView(APIView):
     def post(self, request):
         return Response({"message": "Test route works!"})
+
+class ListSectionsWithProgressView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        test_id = request.query_params.get("test_id")
+        candidate_test_id = request.query_params.get("candidate_test_id")
+
+        if not test_id or not candidate_test_id:
+            return Response({"error": "Both test_id and candidate_test_id are required."}, status=400)
+
+        try:
+            candidate_test = Candidate_Test.objects.get(id=candidate_test_id)
+        except Candidate_Test.DoesNotExist:
+            return Response({"error": "Invalid candidate_test_id"}, status=404)
+
+        sections = Section.objects.filter(test__id=test_id)
+        result = []
+
+        for section in sections:
+            total_questions = section.questions.count()
+            attempted_answers = Answer.objects.filter(
+                candidate_test_id=candidate_test_id,
+                section_id=section.id
+            ).exclude(answer_text__isnull=True).exclude(answer_text="").count()
+
+            result.append({
+                "section_id": section.id,
+                "section_name": section.name,
+                "section_type": section.type,
+                "total_questions": total_questions,
+                "attempted_questions": attempted_answers
+            })
+
+        return Response(result, status=200)

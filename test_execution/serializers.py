@@ -61,4 +61,4 @@ class DemoAudioResponseSerializer(serializers.ModelSerializer):
 class ProctoringScreenshotSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProctoringScreenshot
-        fields = ['id', 'session', 'screenshot', 'timestamp']
+        fields = '__all__'

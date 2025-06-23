@@ -6,13 +6,15 @@ from rest_framework.response import Response
 from .models import Test, Section, Question, Option
 from users.models import Candidate
 from .models import Test, Section, Question, Option, SectionTimer
-from .serializers import TestSerializer, SectionSerializer, QuestionSerializer, OptionSerializer
+from .serializers import TestSerializer, SectionSerializer, QuestionSerializer, OptionSerializer, FullTestDetailSerializer
 import json
 from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
 from django.http import JsonResponse
 from django.conf import settings
 from django.core.cache import cache
 import random
+from django.db import transaction
 from rest_framework.permissions import IsAuthenticated
 from django.core.mail import send_mail
 from django.utils import timezone
@@ -20,7 +22,7 @@ from dateutil.parser import isoparse
 #from .models import SectionTimer
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-from .models import Test,Candidate_Test
+from .models import Candidate_Test
 from .serializers import TestAssignmentSerializer
 from users.models import Candidate
 from django.db import transaction
@@ -256,25 +258,46 @@ class AssignTestToCandidateView(APIView):
 class GetTimerView(View):
     def get(self, request, *args, **kwargs):
         try:
-            # These were undefined in your original code, causing a NameError
-            session_id = int(request.GET.get('session_id'))
+            candidate_test_id = request.GET.get('candidate_test_id')
             section_id = int(request.GET.get('section_id'))
         except (TypeError, ValueError):
-            return JsonResponse({'error': 'session_id and section_id are required and must be numbers.'}, status=400)
+            return JsonResponse({'error': 'candidate_test_id and section_id must be valid.'}, status=400)
 
         try:
-            timer = SectionTimer.objects.get(session_id=session_id, section_id=section_id)
-            return JsonResponse({'remaining_time': timer.remaining_time})
-        except SectionTimer.DoesNotExist:
-            try:
-                # Fetch default from Section model if no timer exists
-                section = Section.objects.get(id=section_id)
-                # default to 60 mins (3600s) if time_limit is not set
-                default_time = (section.time_limit or 60) * 60  
-                return JsonResponse({'remaining_time': default_time})
-            except Section.DoesNotExist:
-                return JsonResponse({'error': 'Section not found'}, status=404)
+            # Try fetching existing timer
+            timer = SectionTimer.objects.filter(
+                candidate_test_id=candidate_test_id,
+                section_id=section_id
+            ).first()
 
+            if timer:
+                return JsonResponse({'remaining_time': timer.remaining_time})
+
+            # If timer doesn't exist, fetch section's default time
+            section = Section.objects.get(id=section_id)
+
+            if section.time_limit:
+                if isinstance(section.time_limit, str) and ':' in section.time_limit:
+                    try:
+                        mins, secs = map(int, section.time_limit.split(":"))
+                        default_seconds = mins * 60 + secs
+                    except Exception:
+                        default_seconds = 30 * 60  # fallback to 30 min
+                else:
+                    try:
+                        default_seconds = int(section.time_limit) * 60
+                    except Exception:
+                        default_seconds = 30 * 60
+            else:
+                default_seconds = 30 * 60
+
+            return JsonResponse({'remaining_time': default_seconds})
+
+        except Section.DoesNotExist:
+            return JsonResponse({'error': 'Section not found'}, status=404)
+        except Exception as e:
+            print("❌ Unexpected error in GetTimerView:", e)
+            return JsonResponse({'error': 'Internal server error'}, status=500)
 
 # --- Your SaveTimerView was mostly correct, but needs to be a separate class ---
 @method_decorator(csrf_exempt, name='dispatch')
@@ -282,23 +305,25 @@ class SaveTimerView(View):
     def post(self, request):
         try:
             data = json.loads(request.body)
-            session_id = data.get('session_id')
+            candidate_test_id = data.get('candidate_test_id')
             section_id = data.get('section_id')
             remaining_time = data.get('remaining_time')
-            
-            if session_id is None or section_id is None or remaining_time is None:
-                return JsonResponse({'error': 'session_id, section_id, and remaining_time are required.'}, status=400)
-                
+
+            if candidate_test_id is None or section_id is None or remaining_time is None:
+                return JsonResponse({'error': 'candidate_test_id, section_id, and remaining_time are required.'}, status=400)
+
+            SectionTimer.objects.update_or_create(
+                candidate_test_id=candidate_test_id,
+                section_id=section_id,
+                defaults={'remaining_time': remaining_time}
+            )
+            return JsonResponse({'status': 'success'}, status=200)
+
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON'}, status=400)
-
-        # Your logic for saving the timer would go here. For example:
-        SectionTimer.objects.update_or_create(
-            session_id=session_id,
-            section_id=section_id,
-            defaults={'remaining_time': remaining_time}
-        )
-        return JsonResponse({'status': 'success'}, status=200)
+        except Exception as e:
+            print("❌ Error in SaveTimerView:", e)
+            return JsonResponse({'error': 'Internal server error'}, status=500)
 
 class FullTestCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -321,8 +346,6 @@ class FullTestCreateView(APIView):
                 description=details_data.get('description'),
                 duration=details_data.get('duration'),
                 tags=details_data.get('tags'),
-                start_date=details_data.get('startDate'),
-                end_date=details_data.get('endDate'),
                 passing_percentage=settings_data.get('passingPercentage'),
                 scoring_type=settings_data.get('scoring'),
                 negative_marking_type=settings_data.get('negativeMarking'),
@@ -356,50 +379,45 @@ class FullTestCreateView(APIView):
             # --- END OF THE FIX ---
 
             section = Section.objects.create(
-                test=test, created_by=user,
-                name=section_data.get('name'),
-                type=section_data.get('type'),
-                time_limit=section_data.get('timeLimit'),
-                num_questions=section_data.get('numQuestions'),
-                marks_per_question=section_data.get('marksPerQuestion'),
+                test=test, 
+                created_by=user,
+                name=section_data.get('sectionName'),            # CORRECT KEY
+                type=section_data.get('sectionType'),            # CORRECT KEY
+                time_limit=section_data.get('timeLimit'),        # CORRECT KEY
+                num_questions=section_data.get('noOfQuestions'), # CORRECT KEY
+                marks_per_question=section_data.get('marksPerQuestion'), # CORRECT KEY
                 max_marks=section_data.get('maxMarks'),
                 min_marks=section_data.get('minMarks'),
-                # Use our new, cleaned variable here.
                 negative_marks=cleaned_negative_marks,
                 shuffle_questions=section_data.get('shuffleQuestions', False),
                 shuffle_answers=section_data.get('shuffleAnswers', False),
-                instructions=section_data.get('instructions'),
+                instructions=section_data.get('sectionInstructions'), # CORRECT KEY
             )
-            # =================== START: PASTE THE NEW, CORRECTED CODE HERE ===================
-            # This loop now correctly handles all question types and their specific issues.
+
             for q_data in section_data.get('questions', []):
                 question_type = q_data.get('type')
 
                 # --- Section for PARAGRAPH questions ---
                 if question_type == 'paragraph':
-                    # FIX #1: Correctly save BOTH the default text and the paragraph content.
                     parent_question = Question.objects.create(
                         section=section,
                         created_by=user,
                         type='paragraph',
                         text='Read the following passage and answer the questions that follow.',
-                        paragraph_content=q_data.get('paragraph') # This was the missing line.
+                        paragraph_content=q_data.get('paragraph')
                     )
                     
-                    # Loop through the sub-questions.
                     for sub_q_data in q_data.get('subQuestions', []):
                         sub_question_type = sub_q_data.get('type')
                         sub_fib_answer = None
 
-                        # FIX #2 (for sub-questions): Handle multiple correct answers.
-                        if sub_question_type == 'mcq':
+                        if sub_question_type == 'Multiple Choice': # Frontend sends "Multiple Choice"
                             correct_options = [opt.get('text') for opt in sub_q_data.get('options', []) if opt.get('isCorrect')]
                             if correct_options:
-                                sub_fib_answer = '|'.join(correct_options) # Join multiple answers with '|||'
-                        elif sub_question_type == 'fib':
+                                sub_fib_answer = '|'.join(correct_options)
+                        elif sub_question_type == 'Fill in the blank': # Frontend sends "Fill in the blank"
                             sub_fib_answer = sub_q_data.get('correctAnswer')
 
-                        # Create the sub-question object.
                         sub_question = Question.objects.create(
                             section=section,
                             parent_question=parent_question,
@@ -407,52 +425,51 @@ class FullTestCreateView(APIView):
                             type=sub_question_type,
                             text=sub_q_data.get('text'),
                             fib_answer=sub_fib_answer,
+                            # FIX: Use camelCase 'allowMultiple'
                             allow_multiple=sub_q_data.get('allowMultiple', False)
                         )
 
-                        # This part to save options for sub-questions is correct.
-                        if sub_question_type == 'mcq':
+                        if sub_question_type == 'Multiple Choice':
                             for opt_data in sub_q_data.get('options', []):
                                 Option.objects.create(
                                     question=sub_question,
                                     text=opt_data.get('text'),
+                                    # FIX: Use camelCase 'isCorrect'
                                     is_correct=opt_data.get('isCorrect', False)
                                 )
                 
                 # --- Section for ALL OTHER question types (MCQ, FIB, etc.) ---
                 else:
                     fib_answer_value = None
-                    # FIX #2 (for main questions): Handle multiple correct answers.
-                    if question_type == 'mcq':
+                    if question_type == 'Multiple Choice':
                         correct_answers = [opt.get('text') for opt in q_data.get('answers', []) if opt.get('isCorrect')]
                         if correct_answers:
-                            fib_answer_value = '|'.join(correct_answers) # Join multiple answers with '|||'
-                    elif question_type == 'fib':
-                        fib_answer_value = q_data.get('fib_answer')
+                            fib_answer_value = '|'.join(correct_answers)
+                    elif question_type == 'Fill in the blank':
+                        # The frontend QuestionForm sends the answer inside the 'answers' array
+                        fib_answer_value = q_data.get('answers', [{}])[0].get('text')
 
-                    # Create the main question object with all fixes.
                     question = Question.objects.create(
                         section=section,
                         created_by=user,
                         type=question_type,
                         text=q_data.get('text'),
-                        video_time=q_data.get('videoTime'),
-                        audio_time=q_data.get('audioTime'),
+                        # FIX: Use camelCase
+                        video_time=q_data.get('mediaTime'), # Frontend sends 'mediaTime'
+                        audio_time=q_data.get('mediaTime'), # Frontend sends 'mediaTime'
                         fib_answer=fib_answer_value,
-                        # FIX #3: Correctly save the 'allow_multiple' boolean value.
-                        allow_multiple=q_data.get('allowMultiple', False)
+                        allow_multiple=q_data.get('allowMultiple', False) # FIX: Use camelCase
                     )
 
-                    # This part for creating options for main MCQs is correct.
-                    if question_type == 'mcq':
+                    if question_type == 'Multiple Choice':
                         for opt_data in q_data.get('answers', []):
                             Option.objects.create(
                                 question=question,
                                 text=opt_data.get('text'),
                                 weightage=opt_data.get('weightage', ''),
+                                # FIX: Use camelCase
                                 is_correct=opt_data.get('isCorrect', False)
                             )
-            # =================== END: OF THE PASTED CODE ===================
         return Response({"message": "Test created successfully!", "test_id": test.id}, status=status.HTTP_201_CREATED)
     
 # --- ADD THIS ENTIRE NEW VIEW CLASS AT THE END OF THE FILE ---
@@ -552,51 +569,142 @@ class SendInvitationsView(APIView):
                 continue
 
         return Response({"message": f"{sent_count} invitation(s) sent successfully."}, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_candidate_test_id(request):
+    candidate_id = request.GET.get("candidate_id")
+    test_id = request.GET.get("test_id")
+
+    try:
+        ct = Candidate_Test.objects.get(candidate_id=candidate_id, test_id=test_id)
+        test = ct.test
+        return Response({
+            "id": ct.id,
+            "sections": [
+                {
+                    "id": s.id,
+                    "name": s.name,
+                    "time_limit": s.time_limit,
+                }
+                for s in test.sections.all()
+            ],
+        })
+    except Candidate_Test.DoesNotExist:
+        return Response({"detail": "Candidate_Test not found"}, status=404)
     
-class CandidateTestStartView(APIView):
+class ValidateTestAttemptView(APIView):
     """
-    View for a logged-in candidate to start their assigned test.
-    This view performs critical checks before returning test data.
+    Checks if the currently logged-in candidate's attempt for a specific
+    test is still valid (i.e., not expired or completed).
+    This is called by the "Accept" button on the Welcome Page.
     """
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request, assignment_id, *args, **kwargs):
-        # The user must be a candidate to take a test
-        if request.user.role != 'CANDIDATE':
-            return Response({"error": "Only candidates can take tests."}, status=status.HTTP_403_FORBIDDEN)
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        test_id = request.data.get('test_id')
+
+        if not test_id:
+            return Response({"error": "A test_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if user.role != 'CANDIDATE':
+            return Response({"error": "This action is only for candidates."}, status=status.HTTP_403_FORBIDDEN)
 
         try:
-            # Step 1: Get the specific test assignment for this candidate
-            # This ensures a candidate can only access their own assigned test.
-            assignment = Candidate_Test.objects.get(id=assignment_id, candidate__user=request.user)
-
+            # Find the specific assignment for THIS user and THIS test
+            assignment = Candidate_Test.objects.get(candidate__user=user, test_id=test_id)
         except Candidate_Test.DoesNotExist:
-            return Response({"error": "Test assignment not found or you are not authorized."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "You are not assigned to this test."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Step 2: Check the assignment status first
+        # The Expiry Check
         if assignment.status == 'COMPLETED':
             return Response({"error": "You have already completed this test."}, status=status.HTTP_403_FORBIDDEN)
-        
-        if assignment.status == 'EXPIRED':
-            return Response({"error": "This test link has expired."}, status=status.HTTP_403_FORBIDDEN)
 
-        # Step 3: *** THE CRUCIAL EXPIRY CHECK ***
-        # Check if an expiry date is set AND if the current time is past it.
         if assignment.expiry_date and timezone.now() > assignment.expiry_date:
-            # The link has expired. Update the status and block access.
             assignment.status = 'EXPIRED'
             assignment.save()
             return Response({
-                "error": f"This test link expired on {assignment.expiry_date.strftime('%B %d, %Y at %I:%M %p')}."
+                "error": f"Your access to this test expired on {assignment.expiry_date.strftime('%B %d, %Y')}"
             }, status=status.HTTP_403_FORBIDDEN)
 
-        # Step 4: If all checks pass, mark the test as 'STARTED'
-        # This is a good practice to prevent re-entry and track progress.
-        if assignment.status not in ['STARTED', 'COMPLETED']:
-            assignment.status = 'STARTED'
-            assignment.save()
+        # If all checks pass, the candidate can proceed.
+        return Response({"message": "Validation successful. You may proceed."}, status=status.HTTP_200_OK)
+    
+class FullTestDetailView(generics.RetrieveAPIView):
+    """
+    Provides a complete, nested representation of a test,
+    including all sections, questions, and options, formatted
+    for direct use by the frontend for importing.
+    """
+    # Use prefetch_related to efficiently get all related data in fewer database queries.
+    queryset = Test.objects.prefetch_related(
+        'sections__questions__options'
+    ).all()
+    serializer_class = FullTestDetailSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    lookup_field = 'id'
+    lookup_url_kwarg = 'test_id'
 
-        # Step 5: Success! Return the full test data.
-        # The frontend will now receive this data and render the test page.
-        test_data = TestSerializer(assignment.test).data
-        return Response(test_data, status=status.HTTP_200_OK)
+# In test_creation/views.py
+
+# --- REPLACE YOUR EXISTING ImportCandidatesFromTestView WITH THIS ---
+
+class ImportCandidatesFromTestView(APIView):
+    """
+    Imports all assigned candidates from a source test to a destination test.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request, *args, **kwargs):
+        # --- FIX 1: Get the destination ID from kwargs ---
+        # This is the standard, robust way to get a URL parameter in a class-based view.
+        destination_test_id = kwargs.get('test_id')
+        
+        # --- FIX 2: Add validation for the destination ID ---
+        if not destination_test_id:
+            return Response({"error": "Destination test ID not found in URL."}, status=status.HTTP_400_BAD_REQUEST)
+
+        source_test_id = request.data.get('source_test_id')
+
+        if not source_test_id:
+            return Response({"error": "A 'source_test_id' is required in the request body."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # The rest of the logic is the same and correct
+            destination_test = Test.objects.get(id=destination_test_id, created_by=request.user)
+            source_assignments = Candidate_Test.objects.filter(test_id=source_test_id)
+            
+            if not source_assignments.exists():
+                return Response({"message": "The selected source test has no candidates to import."}, status=status.HTTP_200_OK)
+
+            newly_added_count = 0
+            already_assigned_count = 0
+
+            for assignment in source_assignments:
+                candidate = assignment.candidate
+                
+                _, created = Candidate_Test.objects.get_or_create(
+                    candidate=candidate,
+                    test=destination_test
+                )
+
+                if created:
+                    newly_added_count += 1
+                else:
+                    already_assigned_count += 1
+
+            return Response({
+                "message": f"Import complete. Added {newly_added_count} new candidates. {already_assigned_count} candidates were already assigned."
+            }, status=status.HTTP_200_OK)
+
+        except Test.DoesNotExist:
+            return Response({"error": "Destination test not found or you do not have permission to modify it."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            # This will help debug any other potential issues
+            import traceback
+            print("--- IMPORT CANDIDATES CRASH ---")
+            print(traceback.format_exc())
+            print("--- END OF CRASH REPORT ---")
+            return Response({"error": f"An unexpected server error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

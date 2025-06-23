@@ -231,3 +231,17 @@ class EmailOrPhoneLoginView(APIView):
         if serializer.is_valid():
             return Response(serializer.validated_data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class CurrentCandidateAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            candidate = Candidate.objects.get(user=request.user)
+            return Response({
+                "id": candidate.user.id,
+                "name": candidate.name,
+                "email": request.user.email,
+            })
+        except Candidate.DoesNotExist:
+            return Response({"detail": "Candidate not found"}, status=404)
