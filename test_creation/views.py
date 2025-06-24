@@ -3,9 +3,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework import generics, permissions
 from rest_framework.views import APIView , View
 from rest_framework.response import Response
-from .models import Test, Section, Question, Option
-from users.models import Candidate
 from .models import Test, Section, Question, Option, SectionTimer
+from users.models import Candidate
 from .serializers import TestSerializer, SectionSerializer, QuestionSerializer, OptionSerializer
 import json
 from rest_framework import status
@@ -13,6 +12,7 @@ from rest_framework.decorators import api_view, permission_classes
 from django.http import JsonResponse
 from django.conf import settings
 from django.core.cache import cache
+import hashlib
 import random
 from rest_framework.permissions import IsAuthenticated
 from django.core.mail import send_mail
@@ -101,17 +101,34 @@ class CreateQuestionView(generics.CreateAPIView):
 
 
 # Replace it with this (CORRECTED)
-class ListQuestionsBySectionView(generics.ListAPIView):
-    serializer_class = QuestionSerializer
-    permission_classes = [AllowAny] # You might want to change this to IsAuthenticated later
+class ListQuestionsBySectionView(APIView):
+    permission_classes = [AllowAny]
 
-    def get_queryset(self):
-        # Get both IDs from the URL
-        test_id = self.kwargs['test_id']
-        section_id = self.kwargs['section_id']
-        
-        # Filter by both to ensure we only get questions from the correct section of the correct test
-        return Question.objects.filter(section__test__id=test_id, section__id=section_id)
+    def get(self, request, test_id, section_id):
+        candidate_test_id = request.query_params.get("candidate_test_id")
+
+        questions = Question.objects.filter(
+            section__test__id=test_id,
+            section__id=section_id
+        ).select_related("section")
+
+        # Optional: Get section config to check shuffle setting
+        section = questions.first().section if questions.exists() else None
+        shuffle = section.shuffle_questions if section else False
+
+        # Convert queryset to list
+        question_list = list(questions)
+
+        if shuffle and candidate_test_id:
+            # Deterministic shuffle using hash
+            seed = int(hashlib.md5(candidate_test_id.encode()).hexdigest(), 16)
+            print(f"Shuffle Questions: {shuffle}")
+            print(f"Candidate Test ID: {candidate_test_id}")
+            print(f"Before shuffle: {[q.id for q in question_list]}")
+            random.Random(seed).shuffle(question_list)
+            print(f"After shuffle: {[q.id for q in question_list]}")
+        serializer = QuestionSerializer(question_list, many=True, context={'request': request})
+        return Response(serializer.data)
 
 class QuestionDetailView(generics.RetrieveAPIView):
     queryset = Question.objects.all()
@@ -146,51 +163,51 @@ class OptionDetailView(generics.RetrieveAPIView):
     lookup_field = 'id'
     lookup_url_kwarg = 'option_id'
 
-def fetch_section_questions(request, section_id):
-    print("Request GET params:", request.GET)  # add this line to console log
+#def fetch_section_questions(request, section_id):
+#    print("Request GET params:", request.GET)  # add this line to console log
     # Get session_id from query parameters
-    session_id = request.GET.get('session_id')
-    if not session_id:
-        return JsonResponse({'error': 'Session ID is required as a query parameter'}, status=400)
-
+#    session_id = request.GET.get('session_id')
+#    if not session_id:
+#        return JsonResponse({'error': 'Session ID is required as a query parameter'}, status=400)
+#
     # Create a cache key using section_id and session_id
-    cache_key = f"json_qns_s{section_id}_sess{session_id}"
-    cached_data = cache.get(cache_key)
+#    cache_key = f"json_qns_s{section_id}_sess{session_id}"
+#    cached_data = cache.get(cache_key)
 
-    if cached_data:
-        return JsonResponse(cached_data, safe=False)
+#    if cached_data:
+#        return JsonResponse(cached_data, safe=False)
 
     # Load JSON data
-    try:
-        with open(settings.BASE_DIR / 'test_creation' / 'test_questions.json') as f:
-            data = json.load(f)
-    except FileNotFoundError:
-        return JsonResponse({'error': 'Question file not found'}, status=500)
-
+#    try:
+#        with open(settings.BASE_DIR / 'test_creation' / 'test_questions.json') as f:
+#            data = json.load(f)
+#    except FileNotFoundError:
+#        return JsonResponse({'error': 'Question file not found'}, status=500)
+#
     # Find the section with the matching ID
-    section_data = next((sec for sec in data if sec.get("section_id") == section_id), None)
+#    section_data = next((sec for sec in data if sec.get("section_id") == section_id), None)
 
-    if not section_data:
-        return JsonResponse({'error': 'Section not found'}, status=404)
+#    if not section_data:
+#        return JsonResponse({'error': 'Section not found'}, status=404)
 
-    questions = section_data.get("questions", [])
+#    questions = section_data.get("questions", [])
 
     # Shuffle questions and their options
-    random.shuffle(questions)
-    for question in questions:
-        if "options" in question:
-            random.shuffle(question["options"])
+#    random.shuffle(questions)
+#    for question in questions:
+#        if "options" in question:
+#            random.shuffle(question["options"])
 
     # Prepare response data
-    response_data = {
-        "section_type": section_data.get("section_type", "unknown"),
-        "questions": questions
-    }
+#    response_data = {
+#        "section_type": section_data.get("section_type", "unknown"),
+#        "questions": questions
+#    }
 
     # Cache the result for 1 hour
-    cache.set(cache_key, response_data, timeout=60 * 60)
+#    cache.set(cache_key, response_data, timeout=60 * 60)
 
-    return JsonResponse(response_data, safe=False)
+#    return JsonResponse(response_data, safe=False)
 
 # test_creation/views.py
 

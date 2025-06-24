@@ -2,7 +2,8 @@ from rest_framework import serializers
 from .models import Test, Section, Question, Option
 from .models import Candidate_Test
 from users.models import Candidate
-
+import hashlib
+import random
 
 class OptionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -10,7 +11,7 @@ class OptionSerializer(serializers.ModelSerializer):
         fields = ['id', 'question', 'text', 'is_correct']
         
 class QuestionSerializer(serializers.ModelSerializer):
-    options = OptionSerializer(many=True, read_only=True)
+    options = serializers.SerializerMethodField()  # 👈 dynamic field
 
     class Meta:
         model = Question
@@ -22,6 +23,22 @@ class QuestionSerializer(serializers.ModelSerializer):
             'video_time': {'required': False, 'allow_null': True},
             'audio_time': {'required': False, 'allow_null': True},
         }
+
+    def get_options(self, obj):
+        request = self.context.get('request')
+        candidate_test_id = request.query_params.get('candidate_test_id') if request else None
+
+        options = list(obj.options.all())
+
+        # Check if we should shuffle
+        if obj.section.shuffle_answers and candidate_test_id:
+            # Deterministic shuffle per question and candidate
+            seed = int(hashlib.sha256(f"{candidate_test_id}-{obj.id}".encode()).hexdigest(), 16) % (10 ** 8)
+            rng = random.Random(seed)
+            rng.shuffle(options)
+
+        return OptionSerializer(options, many=True).data
+
 class SectionSerializer(serializers.ModelSerializer):
     questions = QuestionSerializer(many=True, read_only=True)
     

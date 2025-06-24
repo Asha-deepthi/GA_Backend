@@ -7,7 +7,7 @@ from .views import (
     CreateSectionView, ListSectionsByTestView, SectionDetailView,
     CreateQuestionView, ListQuestionsBySectionView, QuestionDetailView,
     CreateOptionView, ListOptionsByQuestionView, OptionDetailView,AssignTestToCandidateView,
-    FullTestCreateView,CreateCandidateUserView,fetch_section_questions,SendInvitationsView,ListAssignedCandidatesView,
+    FullTestCreateView,CreateCandidateUserView,SendInvitationsView,ListAssignedCandidatesView,
     CreateOptionView, ListOptionsByQuestionView, OptionDetailView, GetTimerView, SaveTimerView, AllSectionsListView, get_candidate_test_id,
 )
 
