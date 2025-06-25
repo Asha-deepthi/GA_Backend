@@ -59,7 +59,7 @@ class Question(models.Model):
     text = models.TextField(help_text="The prompt or question text")
     allow_multiple = models.BooleanField(default=False, help_text="For MCQ, allow multiple correct answers")
     paragraph_content = models.TextField(blank=True, null=True)
-    fib_answer = models.CharField(max_length=255, blank=True, null=True) # For fill-in-the-blank
+    correct_answer = models.TextField(blank=True, null=True, help_text="Correct answer for FIB, Subjective, or joined for MCQ")
     video_time = models.PositiveIntegerField(default=60, help_text="Max seconds for video")
     audio_time = models.PositiveIntegerField(default=60, help_text="Max seconds for audio")
     

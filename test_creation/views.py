@@ -8,6 +8,7 @@ from users.models import Candidate
 from .models import Test, Section, Question, Option, SectionTimer
 from .serializers import TestSerializer, SectionSerializer, QuestionSerializer, OptionSerializer, FullTestDetailSerializer
 import json
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from django.http import JsonResponse
@@ -194,10 +195,9 @@ def fetch_section_questions(request, section_id):
 
     return JsonResponse(response_data, safe=False)
 
-# test_creation/views.py
+# -# --- IN test_creation/views.py ---
+# --- REPLACE your existing AssignTestToCandidateView with this ---
 
-# --- FIX 1: AssignTestToCandidateView is now a clean, separate class. ---
-# Its only job is to assign a test. All timer logic has been removed.
 class AssignTestToCandidateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -212,21 +212,17 @@ class AssignTestToCandidateView(APIView):
             return Response({"error": "candidate_email and test_id are required."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # Step 1: Fetch the user and test objects.
             user = User.objects.get(email=candidate_email, role='CANDIDATE')
             test = Test.objects.get(id=test_id)
 
-            # --- FIX 2: All logic using 'user' and 'test' is now INSIDE the 'try' block. ---
-            # This guarantees they exist and prevents the NameError.
-            
-            # Optional: Check if the admin owns the test they are assigning
             if test.created_by != request.user:
                 return Response({"error": "You can only assign tests that you have created."}, status=status.HTTP_403_FORBIDDEN)
 
-            # Get the candidate profile associated with the user
-            candidate_profile = user.candidate_profile
+            # --- THIS IS THE FINAL FIX ---
+            # Instead of guessing the reverse relationship name, we will query for the
+            # Candidate profile directly. This is the most robust way.
+            candidate_profile = Candidate.objects.get(user=user)
             
-            # Create the assignment using get_or_create
             assignment, created = Candidate_Test.objects.get_or_create(
                 candidate=candidate_profile,
                 test=test
@@ -238,23 +234,26 @@ class AssignTestToCandidateView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # Serialize the new assignment for a clean response
             response_serializer = TestAssignmentSerializer(assignment)
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
-        # Step 2: Handle specific "not found" errors.
+        # This will now correctly catch if the Candidate profile is missing
+        except Candidate.DoesNotExist:
+            return Response({
+                "error": f"Data Integrity Error: User '{candidate_email}' exists but has no Candidate Profile. Please re-create this candidate."
+            }, status=status.HTTP_409_CONFLICT)
+
         except User.DoesNotExist:
-            return Response({"error": f"No candidate user found with email {candidate_email}."}, status=status.HTTP_404_NOT_FOUND)
+             return Response({"error": f"No candidate user found with email {candidate_email}."}, status=status.HTTP_404_NOT_FOUND)
+        
         except Test.DoesNotExist:
             return Response({"error": f"No test found with id {test_id}."}, status=status.HTTP_404_NOT_FOUND)
-        except Candidate.DoesNotExist:
-            return Response({"error": f"A profile for the user {candidate_email} does not exist."}, status=404)
+
         except Exception as e:
-            # Catch any other unexpected database errors.
-            return Response({"error": f"An unexpected error occurred during assignment: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-# --- FIX 3: GetTimerView is now its own class with the correct logic. ---
+            import traceback
+            traceback.print_exc()
+            return Response({"error": f"An unexpected server error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
 class GetTimerView(View):
     def get(self, request, *args, **kwargs):
         try:
@@ -325,6 +324,8 @@ class SaveTimerView(View):
             print("❌ Error in SaveTimerView:", e)
             return JsonResponse({'error': 'Internal server error'}, status=500)
 
+# In test_creation/views.py
+
 class FullTestCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -338,7 +339,6 @@ class FullTestCreateView(APIView):
         sections_data = data.get('sections', [])
 
         try:
-            # 1. Create the Test with details and settings (This part is unchanged)
             test = Test.objects.create(
                 created_by=user,
                 title=details_data.get('title'),
@@ -357,66 +357,58 @@ class FullTestCreateView(APIView):
         except Exception as e:
             return Response({"error": f"Failed to create test: {e}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 2. Create Sections, Questions, and Options
         for section_data in sections_data:
-            
-            # --- START OF THE FIX ---
-            # Get the global setting from the Test object we just created.
             is_negative_marking_enabled = test.negative_marking_type == 'negative_marking'
-            
-            cleaned_negative_marks = None # Default to None (null in the database)
-
+            cleaned_negative_marks = None
             if is_negative_marking_enabled:
-                # If enabled, get the value. Default to 0 if it's missing or an empty string.
                 nm_value = section_data.get('negativeMarks')
-                if nm_value in (None, ''):
-                    cleaned_negative_marks = 0
-                else:
-                    cleaned_negative_marks = nm_value
-            # If negative marking is NOT enabled, `cleaned_negative_marks` will remain None.
-            # This correctly ignores any value sent from the frontend when the setting is off.
+                cleaned_negative_marks = 0 if nm_value in (None, '') else nm_value
             
-            # --- END OF THE FIX ---
-
             section = Section.objects.create(
                 test=test, 
                 created_by=user,
-                name=section_data.get('sectionName'),            # CORRECT KEY
-                type=section_data.get('sectionType'),            # CORRECT KEY
-                time_limit=section_data.get('timeLimit'),        # CORRECT KEY
-                num_questions=section_data.get('noOfQuestions'), # CORRECT KEY
-                marks_per_question=section_data.get('marksPerQuestion'), # CORRECT KEY
+                name=section_data.get('name'),
+                type=section_data.get('type'),
+                time_limit=section_data.get('timeLimit'),
+                num_questions=section_data.get('numQuestions'),
+                marks_per_question=section_data.get('marksPerQuestion'),
                 max_marks=section_data.get('maxMarks'),
                 min_marks=section_data.get('minMarks'),
                 negative_marks=cleaned_negative_marks,
                 shuffle_questions=section_data.get('shuffleQuestions', False),
                 shuffle_answers=section_data.get('shuffleAnswers', False),
-                instructions=section_data.get('sectionInstructions'), # CORRECT KEY
+                instructions=section_data.get('instructions'),
             )
 
             for q_data in section_data.get('questions', []):
                 question_type = q_data.get('type')
 
-                # --- Section for PARAGRAPH questions ---
-                if question_type == 'paragraph':
+                if question_type == 'Paragraph':
                     parent_question = Question.objects.create(
                         section=section,
                         created_by=user,
-                        type='paragraph',
-                        text='Read the following passage and answer the questions that follow.',
+                        type='Paragraph',
+                        text='Read the following passage and answer the questions.',
                         paragraph_content=q_data.get('paragraph')
                     )
                     
                     for sub_q_data in q_data.get('subQuestions', []):
                         sub_question_type = sub_q_data.get('type')
-                        sub_fib_answer = None
+                        sub_correct_answer = None
+                        sub_audio_time = None
+                        sub_video_time = None
 
-                        if sub_question_type == 'Multiple Choice': # Frontend sends "Multiple Choice"
+                        # This `if/elif` block now handles all sub-question types
+                        if sub_question_type == 'Multiple Choice':
                             correct_options = [opt.get('text') for opt in sub_q_data.get('options', []) if opt.get('isCorrect')]
                             if correct_options:
-                                sub_fib_answer = '|'.join(correct_options)
-                        elif sub_question_type == 'Fill in the blank': # Frontend sends "Fill in the blank"
-                            sub_fib_answer = sub_q_data.get('correctAnswer')
+                                sub_correct_answer = ','.join(correct_options)
+                        elif sub_question_type in ['Fill in the blank', 'Subjective']:
+                            sub_correct_answer = sub_q_data.get('correctAnswer')
+                        elif sub_question_type == 'Audio based':
+                            sub_audio_time = sub_q_data.get('mediaTime', 60)
+                        elif sub_question_type == 'Video based':
+                            sub_video_time = sub_q_data.get('mediaTime', 60)
 
                         sub_question = Question.objects.create(
                             section=section,
@@ -424,41 +416,32 @@ class FullTestCreateView(APIView):
                             created_by=user,
                             type=sub_question_type,
                             text=sub_q_data.get('text'),
-                            fib_answer=sub_fib_answer,
-                            # FIX: Use camelCase 'allowMultiple'
-                            allow_multiple=sub_q_data.get('allowMultiple', False)
-                        )
+                            correct_answer=sub_correct_answer,
+                            allow_multiple=sub_q_data.get('allowMultiple', False),
+                           # This is the new, correct block for sub-questions
+
+                            audio_time=sub_audio_time if sub_audio_time is not None else 60,
+                            video_time=sub_video_time if sub_video_time is not None else 60
+)
 
                         if sub_question_type == 'Multiple Choice':
                             for opt_data in sub_q_data.get('options', []):
                                 Option.objects.create(
                                     question=sub_question,
                                     text=opt_data.get('text'),
-                                    # FIX: Use camelCase 'isCorrect'
                                     is_correct=opt_data.get('isCorrect', False)
                                 )
                 
-                # --- Section for ALL OTHER question types (MCQ, FIB, etc.) ---
-                else:
-                    fib_answer_value = None
-                    if question_type == 'Multiple Choice':
-                        correct_answers = [opt.get('text') for opt in q_data.get('answers', []) if opt.get('isCorrect')]
-                        if correct_answers:
-                            fib_answer_value = '|'.join(correct_answers)
-                    elif question_type == 'Fill in the blank':
-                        # The frontend QuestionForm sends the answer inside the 'answers' array
-                        fib_answer_value = q_data.get('answers', [{}])[0].get('text')
-
+                else: # Handles all non-paragraph questions
                     question = Question.objects.create(
                         section=section,
                         created_by=user,
-                        type=question_type,
+                        type=q_data.get('type'),
                         text=q_data.get('text'),
-                        # FIX: Use camelCase
-                        video_time=q_data.get('mediaTime'), # Frontend sends 'mediaTime'
-                        audio_time=q_data.get('mediaTime'), # Frontend sends 'mediaTime'
-                        fib_answer=fib_answer_value,
-                        allow_multiple=q_data.get('allowMultiple', False) # FIX: Use camelCase
+                        allow_multiple=q_data.get('allowMultiple', False),
+                        video_time=q_data.get('mediaTime', 60),
+                         audio_time=q_data.get('mediaTime', 60),
+                        correct_answer=q_data.get('correctAnswer')
                     )
 
                     if question_type == 'Multiple Choice':
@@ -467,12 +450,11 @@ class FullTestCreateView(APIView):
                                 question=question,
                                 text=opt_data.get('text'),
                                 weightage=opt_data.get('weightage', ''),
-                                # FIX: Use camelCase
                                 is_correct=opt_data.get('isCorrect', False)
                             )
+        
         return Response({"message": "Test created successfully!", "test_id": test.id}, status=status.HTTP_201_CREATED)
-    
-# --- ADD THIS ENTIRE NEW VIEW CLASS AT THE END OF THE FILE ---
+
 class CreateCandidateUserView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -646,9 +628,9 @@ class FullTestDetailView(generics.RetrieveAPIView):
     lookup_field = 'id'
     lookup_url_kwarg = 'test_id'
 
-# In test_creation/views.py
 
-# --- REPLACE YOUR EXISTING ImportCandidatesFromTestView WITH THIS ---
+# --- IN test_creation/views.py ---
+# --- REPLACE your existing ImportCandidatesFromTestView with this ---
 
 class ImportCandidatesFromTestView(APIView):
     """
@@ -658,24 +640,19 @@ class ImportCandidatesFromTestView(APIView):
 
     @transaction.atomic
     def post(self, request, *args, **kwargs):
-        # --- FIX 1: Get the destination ID from kwargs ---
-        # This is the standard, robust way to get a URL parameter in a class-based view.
         destination_test_id = kwargs.get('test_id')
+        source_test_id = request.data.get('source_test_id')
         
-        # --- FIX 2: Add validation for the destination ID ---
         if not destination_test_id:
             return Response({"error": "Destination test ID not found in URL."}, status=status.HTTP_400_BAD_REQUEST)
-
-        source_test_id = request.data.get('source_test_id')
 
         if not source_test_id:
             return Response({"error": "A 'source_test_id' is required in the request body."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # The rest of the logic is the same and correct
             destination_test = Test.objects.get(id=destination_test_id, created_by=request.user)
             source_assignments = Candidate_Test.objects.filter(test_id=source_test_id)
-            
+
             if not source_assignments.exists():
                 return Response({"message": "The selected source test has no candidates to import."}, status=status.HTTP_200_OK)
 
@@ -684,27 +661,21 @@ class ImportCandidatesFromTestView(APIView):
 
             for assignment in source_assignments:
                 candidate = assignment.candidate
-                
                 _, created = Candidate_Test.objects.get_or_create(
                     candidate=candidate,
                     test=destination_test
                 )
-
                 if created:
                     newly_added_count += 1
                 else:
                     already_assigned_count += 1
-
+            
             return Response({
                 "message": f"Import complete. Added {newly_added_count} new candidates. {already_assigned_count} candidates were already assigned."
             }, status=status.HTTP_200_OK)
 
         except Test.DoesNotExist:
             return Response({"error": "Destination test not found or you do not have permission to modify it."}, status=status.HTTP_404_NOT_FOUND)
+        
         except Exception as e:
-            # This will help debug any other potential issues
-            import traceback
-            print("--- IMPORT CANDIDATES CRASH ---")
-            print(traceback.format_exc())
-            print("--- END OF CRASH REPORT ---")
-            return Response({"error": f"An unexpected server error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "An unexpected server error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
