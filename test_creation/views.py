@@ -580,3 +580,18 @@ def get_candidate_test_id(request):
         })
     except Candidate_Test.DoesNotExist:
         return Response({"detail": "Candidate_Test not found"}, status=404)
+
+class SubmitTestView(APIView):
+    def post(self, request):
+        candidate_test_id = request.data.get("candidate_test_id")
+        if not candidate_test_id:
+            return Response({"error": "candidate_test_id is required"}, status=400)
+
+        try:
+            candidate_test = Candidate_Test.objects.get(id=candidate_test_id)
+            candidate_test.is_submitted = True
+            candidate_test.status = 'COMPLETED'
+            candidate_test.save()
+            return Response({"message": "Test submitted successfully"})
+        except Candidate_Test.DoesNotExist:
+            return Response({"error": "Candidate_Test not found"}, status=404)

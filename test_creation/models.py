@@ -96,6 +96,7 @@ class Candidate_Test(models.Model):
     # --- END OF CHANGE ---
     score = models.FloatField(null=True, blank=True)
     date_invited = models.DateTimeField(null=True, blank=True) # Changed to allow null initially
+    is_submitted = models.BooleanField(default=False)
     
     class Meta:
         unique_together = ('candidate', 'test')

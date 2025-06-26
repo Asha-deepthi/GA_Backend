@@ -8,7 +8,7 @@ from .views import (
     CreateQuestionView, ListQuestionsBySectionView, QuestionDetailView,
     CreateOptionView, ListOptionsByQuestionView, OptionDetailView,AssignTestToCandidateView,
     FullTestCreateView,CreateCandidateUserView,SendInvitationsView,ListAssignedCandidatesView,
-    CreateOptionView, ListOptionsByQuestionView, OptionDetailView, GetTimerView, SaveTimerView, AllSectionsListView, get_candidate_test_id,
+    CreateOptionView, ListOptionsByQuestionView, OptionDetailView, GetTimerView, SaveTimerView, AllSectionsListView, get_candidate_test_id,SubmitTestView,
 )
 
 #urlpatterns = [
@@ -82,4 +82,5 @@ urlpatterns = [
     path('send-invitations/', SendInvitationsView.as_view(), name='send-invitations'),
 
     path("candidate-test-id/", get_candidate_test_id),
+    path('submit-test/', SubmitTestView.as_view(), name='submit-test'),
 ]

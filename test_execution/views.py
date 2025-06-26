@@ -66,16 +66,17 @@ class AnswerSubmissionView(APIView):
         # Auto-evaluation logic
         marks_allotted = 0
         evaluated = False
-        auto_eval_types = ['mcq', 'fib', 'integer']
 
-        if section_type.lower() in auto_eval_types:
-            submitted = str(answer_text).strip().lower() if answer_text else ''
-            correct_answers = getattr(question, 'correct_answers', []) or []
-            correct_answers = [str(ans).strip().lower() for ans in correct_answers]
+        if candidate_test.is_submitted:
+            auto_eval_types = ['mcq', 'fib', 'integer']
+            if section_type.lower() in auto_eval_types:
+                submitted = str(answer_text).strip().lower() if answer_text else ''
+                correct_answers = getattr(question, 'correct_answers', []) or []
+                correct_answers = [str(ans).strip().lower() for ans in correct_answers]
 
-            if submitted in correct_answers:
-                marks_allotted = section.marks_per_question or 0
-            evaluated = True
+                if submitted in correct_answers:
+                    marks_allotted = section.marks_per_question or 0
+                evaluated = True
 
         # Save or update the answer
         answer, created = Answer.objects.update_or_create(
@@ -113,13 +114,18 @@ class ManualAnswerEvaluationView(APIView):
 
         try:
             answer = Answer.objects.get(id=answer_id)
+            candidate_test = answer.candidate_test
+
+            #Check if the test is submitted
+            if not candidate_test.is_submitted:
+                return Response({'error': 'Cannot evaluate before test is submitted'}, status=403)
+
             answer.marks_allotted = marks
             answer.evaluated = True
             answer.save()
             return Response({'message': 'Answer manually evaluated'})
         except Answer.DoesNotExist:
             return Response({'error': 'Answer not found'}, status=404)
-
 
 class AnswerListView(APIView):
     def get(self, request):
