@@ -12,8 +12,8 @@ class Test(models.Model):
     description = models.TextField(blank=True)
     duration = models.PositiveIntegerField(null=True, blank=True, help_text="Total duration in minutes")
     tags = models.CharField(max_length=255, blank=True)
-    start_date = models.DateTimeField(null=True, blank=True)
-    end_date = models.DateTimeField(null=True, blank=True)
+    #start_date = models.DateTimeField(null=True, blank=True)
+    #end_date = models.DateTimeField(null=True, blank=True)
 
     # --- Fields from QuizSettings.jsx ---
     passing_percentage = models.PositiveIntegerField(null=True, blank=True)
@@ -59,7 +59,7 @@ class Question(models.Model):
     text = models.TextField(help_text="The prompt or question text")
     allow_multiple = models.BooleanField(default=False, help_text="For MCQ, allow multiple correct answers")
     paragraph_content = models.TextField(blank=True, null=True)
-    fib_answer = models.CharField(max_length=255, blank=True, null=True) # For fill-in-the-blank
+    correct_answer = models.TextField(blank=True, null=True, help_text="Correct answer for FIB, Subjective, or joined for MCQ")
     video_time = models.PositiveIntegerField(default=60, help_text="Max seconds for video")
     audio_time = models.PositiveIntegerField(default=60, help_text="Max seconds for audio")
     
@@ -81,22 +81,26 @@ class Option(models.Model):
     
 class Candidate_Test(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, help_text="Unique ID for the test invitation link.")
-    
-    candidate = models.ForeignKey(Candidate, on_delete=models.CASCADE, related_name="test_assignments")
-    test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name="assignments")
+    candidate = models.ForeignKey(Candidate, on_delete=models.CASCADE, related_name="test_assignments", null=True, blank=True)
+    test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name="assignments", null=True, blank=True)
     
     STATUS_CHOICES = [
         ('PENDING', 'Pending'), # <-- NEW DEFAULT
         ('SENT', 'Sent'),
         ('STARTED', 'Started'),
         ('COMPLETED', 'Completed'),
+        ('EXPIRED', 'Expired'),
     ]
     # Set the default status to 'PENDING'
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
-    # --- END OF CHANGE ---
     score = models.FloatField(null=True, blank=True)
+<<<<<<< HEAD
     date_invited = models.DateTimeField(null=True, blank=True) # Changed to allow null initially
     is_submitted = models.BooleanField(default=False)
+=======
+    date_invited = models.DateTimeField(null=True, blank=True) 
+    expiry_date = models.DateTimeField(null=True, blank=True, help_text="The date and time when this specific invitation expires.")
+>>>>>>> 8ea93b853fa00bb0a226aef3405cc7aaf34d53ab
     
     class Meta:
         unique_together = ('candidate', 'test')
