@@ -4,19 +4,11 @@
 from django.urls import path
 from .views import (
     CreateTestView, ListTestView, TestDetailView,
-<<<<<<< HEAD
-    CreateSectionView, ListSectionsByTestView, SectionDetailView,
-    CreateQuestionView, ListQuestionsBySectionView, QuestionDetailView,
-    CreateOptionView, ListOptionsByQuestionView, OptionDetailView,AssignTestToCandidateView,
-    FullTestCreateView,CreateCandidateUserView,SendInvitationsView,ListAssignedCandidatesView,
-    CreateOptionView, ListOptionsByQuestionView, OptionDetailView, GetTimerView, SaveTimerView, AllSectionsListView, get_candidate_test_id,SubmitTestView,
-=======
     CreateSectionView, ListSectionsByTestView, SectionDetailView, ImportCandidatesFromTestView,
     CreateQuestionView, ListQuestionsBySectionView, QuestionDetailView, FullTestDetailView,
     CreateOptionView, ListOptionsByQuestionView, OptionDetailView,AssignTestToCandidateView,  ValidateTestAttemptView,
     FullTestCreateView,CreateCandidateUserView,fetch_section_questions,SendInvitationsView,ListAssignedCandidatesView,
-    CreateOptionView, ListOptionsByQuestionView, OptionDetailView, GetTimerView, SaveTimerView, AllSectionsListView, get_candidate_test_id,
->>>>>>> 8ea93b853fa00bb0a226aef3405cc7aaf34d53ab
+    CreateOptionView, ListOptionsByQuestionView, OptionDetailView, GetTimerView, SaveTimerView, AllSectionsListView, get_candidate_test_id,  SubmitTestView
 )
 
 urlpatterns = [
@@ -54,10 +46,7 @@ urlpatterns = [
     path('validate-attempt/', ValidateTestAttemptView.as_view(), name='validate-test-attempt'),
     path('tests/full-detail/<int:test_id>/', FullTestDetailView.as_view(), name='full-test-detail'),
     path("candidate-test-id/", get_candidate_test_id),
-<<<<<<< HEAD
     path('submit-test/', SubmitTestView.as_view(), name='submit-test'),
+     path('tests/<int:test_id>/import-candidates/', ImportCandidatesFromTestView.as_view(), name='import-candidates-from-test'),
 ]
-=======
-    path('tests/<int:test_id>/import-candidates/', ImportCandidatesFromTestView.as_view(), name='import-candidates-from-test'),
-]
->>>>>>> 8ea93b853fa00bb0a226aef3405cc7aaf34d53ab
+   

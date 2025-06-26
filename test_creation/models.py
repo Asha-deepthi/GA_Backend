@@ -94,13 +94,9 @@ class Candidate_Test(models.Model):
     # Set the default status to 'PENDING'
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     score = models.FloatField(null=True, blank=True)
-<<<<<<< HEAD
-    date_invited = models.DateTimeField(null=True, blank=True) # Changed to allow null initially
     is_submitted = models.BooleanField(default=False)
-=======
     date_invited = models.DateTimeField(null=True, blank=True) 
     expiry_date = models.DateTimeField(null=True, blank=True, help_text="The date and time when this specific invitation expires.")
->>>>>>> 8ea93b853fa00bb0a226aef3405cc7aaf34d53ab
     
     class Meta:
         unique_together = ('candidate', 'test')

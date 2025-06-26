@@ -4,12 +4,8 @@ from rest_framework import generics, permissions
 from rest_framework.views import APIView , View
 from rest_framework.response import Response
 from .models import Test, Section, Question, Option, SectionTimer
-<<<<<<< HEAD
 from users.models import Candidate
-from .serializers import TestSerializer, SectionSerializer, QuestionSerializer, OptionSerializer
-=======
 from .serializers import TestSerializer, SectionSerializer, QuestionSerializer, OptionSerializer, FullTestDetailSerializer
->>>>>>> 8ea93b853fa00bb0a226aef3405cc7aaf34d53ab
 import json
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import status
@@ -595,7 +591,6 @@ def get_candidate_test_id(request):
         })
     except Candidate_Test.DoesNotExist:
         return Response({"detail": "Candidate_Test not found"}, status=404)
-<<<<<<< HEAD
 
 class SubmitTestView(APIView):
     def post(self, request):
@@ -611,7 +606,6 @@ class SubmitTestView(APIView):
             return Response({"message": "Test submitted successfully"})
         except Candidate_Test.DoesNotExist:
             return Response({"error": "Candidate_Test not found"}, status=404)
-=======
     
 class ValidateTestAttemptView(APIView):
     """
@@ -717,4 +711,3 @@ class ImportCandidatesFromTestView(APIView):
         
         except Exception as e:
             return Response({"error": "An unexpected server error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
->>>>>>> 8ea93b853fa00bb0a226aef3405cc7aaf34d53ab
